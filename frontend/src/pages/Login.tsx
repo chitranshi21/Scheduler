@@ -17,6 +17,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      console.log('Attempting to log in with email:', email);
       const response = await authAPI.login(email, password);
       const { token, userType, email: userEmail, userDetails } = response.data;
       login(token, userType, userEmail, userDetails);
@@ -94,7 +95,7 @@ export default function Login() {
             <strong>Demo Credentials:</strong>
           </p>
           <p style={{ fontSize: '12px', color: '#6b7280' }}>
-            Admin: admin@localhost / admin
+            Admin: admin / admin
           </p>
         </div>
       </div>
