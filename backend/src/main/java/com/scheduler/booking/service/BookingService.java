@@ -1,0 +1,89 @@
+package com.scheduler.booking.service;
+
+import com.scheduler.booking.dto.BookingRequest;
+import com.scheduler.booking.model.Booking;
+import com.scheduler.booking.model.Customer;
+import com.scheduler.booking.model.SessionType;
+import com.scheduler.booking.repository.BookingRepository;
+import com.scheduler.booking.repository.CustomerRepository;
+import com.scheduler.booking.repository.SessionTypeRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class BookingService {
+
+    private final BookingRepository bookingRepository;
+    private final SessionTypeRepository sessionTypeRepository;
+    private final CustomerRepository customerRepository;
+
+    public List<Booking> getBookingsByTenant(UUID tenantId) {
+        return bookingRepository.findByTenantId(tenantId);
+    }
+
+    public List<Booking> getUpcomingBookings(UUID tenantId) {
+        return bookingRepository.findUpcomingBookings(tenantId, LocalDateTime.now());
+    }
+
+    public List<Booking> getBookingsByCustomer(UUID customerId) {
+        return bookingRepository.findByCustomerId(customerId);
+    }
+
+    public Booking getBookingById(UUID id) {
+        return bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+    }
+
+    @Transactional
+    public Booking createBooking(UUID tenantId, BookingRequest request, UUID customerId) {
+        SessionType sessionType = sessionTypeRepository.findByIdAndTenantId(
+                request.getSessionTypeId(), tenantId)
+                .orElseThrow(() -> new RuntimeException("Session type not found"));
+
+        // If customer ID not provided, create or find customer by email
+        if (customerId == null && request.getEmail() != null) {
+            Customer customer = customerRepository.findByEmail(request.getEmail())
+                    .orElseGet(() -> {
+                        Customer newCustomer = new Customer();
+                        newCustomer.setEmail(request.getEmail());
+                        newCustomer.setFirstName(request.getFirstName());
+                        newCustomer.setLastName(request.getLastName());
+                        newCustomer.setPhone(request.getPhone());
+                        return customerRepository.save(newCustomer);
+                    });
+            customerId = customer.getId();
+        }
+
+        if (customerId == null) {
+            throw new RuntimeException("Customer information is required");
+        }
+
+        Booking booking = new Booking();
+        booking.setTenantId(tenantId);
+        booking.setCustomerId(customerId);
+        booking.setSessionTypeId(sessionType.getId());
+        booking.setStartTime(request.getStartTime());
+        booking.setEndTime(request.getStartTime().plusMinutes(sessionType.getDurationMinutes()));
+        booking.setParticipants(request.getParticipants());
+        booking.setNotes(request.getNotes());
+        booking.setCustomerTimezone(request.getCustomerTimezone());
+        booking.setStatus("CONFIRMED");
+
+        return bookingRepository.save(booking);
+    }
+
+    @Transactional
+    public void cancelBooking(UUID id, String reason) {
+        Booking booking = getBookingById(id);
+        booking.setStatus("CANCELLED");
+        booking.setCancellationReason(reason);
+        booking.setCancelledAt(LocalDateTime.now());
+        bookingRepository.save(booking);
+    }
+}
