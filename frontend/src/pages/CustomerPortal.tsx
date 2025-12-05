@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { customerAPI } from '../services/api';
 import type { Tenant, SessionType } from '../types';
+import BookingCalendar from '../components/BookingCalendar';
 
 export default function CustomerPortal() {
   const { slug } = useParams<{ slug: string }>();
@@ -9,6 +10,7 @@ export default function CustomerPortal() {
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionType | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [bookingData, setBookingData] = useState({
     firstName: '',
     lastName: '',
@@ -40,7 +42,13 @@ export default function CustomerPortal() {
   const handleSelectSession = (session: SessionType) => {
     setSelectedSession(session);
     setShowBookingForm(true);
+    setShowCustomerForm(false);
     setSuccess(false);
+  };
+
+  const handleTimeSlotSelect = (datetime: string) => {
+    setBookingData({ ...bookingData, startTime: datetime });
+    setShowCustomerForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,22 +134,103 @@ export default function CustomerPortal() {
 
       {showBookingForm && selectedSession && (
         <div className="modal">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: showCustomerForm ? '600px' : '920px' }}>
             <div className="modal-header">
-              Book: {selectedSession.name}
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px' }}>Book: {selectedSession.name}</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280', fontWeight: 'normal' }}>
+                  ${selectedSession.price} • {selectedSession.durationMinutes} minutes
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowBookingForm(false);
+                  setSelectedSession(null);
+                  setShowCustomerForm(false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  padding: '0',
+                  lineHeight: '1'
+                }}
+              >
+                ×
+              </button>
             </div>
             {success ? (
               <div style={{
-                padding: '24px',
-                textAlign: 'center',
-                color: '#10b981',
-                fontSize: '18px',
-                fontWeight: '500'
+                padding: '48px 24px',
+                textAlign: 'center'
               }}>
-                ✓ Booking confirmed! Check your email for details.
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  background: '#d1fae5',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  fontSize: '32px',
+                  color: '#10b981'
+                }}>
+                  ✓
+                </div>
+                <h3 style={{ color: '#10b981', fontSize: '24px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                  Booking Confirmed!
+                </h3>
+                <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+                  Check your email for confirmation details.
+                </p>
+              </div>
+            ) : !showCustomerForm ? (
+              <div>
+                <BookingCalendar
+                  sessionDurationMinutes={selectedSession.durationMinutes}
+                  onSelectSlot={handleTimeSlotSelect}
+                  tenantId={tenant?.id || ''}
+                  sessionTypeId={selectedSession.id}
+                />
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
+                <div style={{
+                  padding: '16px 24px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  marginBottom: '24px'
+                }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                    <strong>Selected Time:</strong>{' '}
+                    {new Date(bookingData.startTime).toLocaleString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerForm(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#4f46e5',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                      marginTop: '8px'
+                    }}
+                  >
+                    ← Change time
+                  </button>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">First Name</label>
                   <input
@@ -182,34 +271,22 @@ export default function CustomerPortal() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Preferred Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    className="form-input"
-                    value={bookingData.startTime}
-                    onChange={(e) => setBookingData({ ...bookingData, startTime: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Notes (optional)</label>
                   <textarea
                     className="form-input"
                     value={bookingData.notes}
                     onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
                     rows={3}
+                    placeholder="Any special requests or information..."
                   />
                 </div>
                 <div className="modal-footer">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowBookingForm(false);
-                      setSelectedSession(null);
-                    }}
+                    onClick={() => setShowCustomerForm(false)}
                     className="button button-secondary"
                   >
-                    Cancel
+                    Back
                   </button>
                   <button type="submit" className="button button-primary">
                     Confirm Booking - ${selectedSession.price}

@@ -24,8 +24,8 @@ public class Admin {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private String passwordHash;
+    @Column(unique = true)
+    private String clerkUserId;
 
     private String firstName;
     private String lastName;

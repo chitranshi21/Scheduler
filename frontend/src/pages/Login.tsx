@@ -1,41 +1,26 @@
-import { useState } from 'react';
+import { SignIn, SignUp, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../services/api';
+import { useEffect, useState } from 'react';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { isSignedIn, user } = useUser();
   const navigate = useNavigate();
+  const [showSignUp, setShowSignUp] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const userRole = user.publicMetadata?.role as string || 'CUSTOMER';
 
-    try {
-      console.log('Attempting to log in with email:', email);
-      const response = await authAPI.login(email, password);
-      const { token, userType, email: userEmail, userDetails } = response.data;
-      login(token, userType, userEmail, userDetails);
-
-      // Navigate based on user type
-      if (userType === 'ADMIN') {
+      // Navigate based on user role
+      if (userRole === 'ADMIN') {
         navigate('/admin');
-      } else if (userType === 'BUSINESS') {
+      } else if (userRole === 'BUSINESS') {
         navigate('/business');
       } else {
         navigate('/');
       }
-    } catch (err: any) {
-      setError('Invalid email or password');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [isSignedIn, user, navigate]);
 
   return (
     <div style={{
@@ -43,60 +28,80 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
     }}>
-      <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '24px', color: '#111827' }}>
+      <div style={{
+        maxWidth: '500px',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '24px'
+      }}>
+        <h1 style={{
+          textAlign: 'center',
+          color: 'white',
+          fontSize: '32px',
+          fontWeight: 'bold',
+          textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+        }}>
           Session Scheduler
         </h1>
-        <p style={{ textAlign: 'center', marginBottom: '32px', color: '#6b7280' }}>
-          Sign in to your account
-        </p>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input
-              type="text"
-              className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email or username"
-              required
+        <div style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center'
+        }}>
+          {showSignUp ? (
+            <SignUp
+              afterSignUpUrl="/"
             />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
+          ) : (
+            <SignIn
+              afterSignInUrl="/"
             />
-          </div>
+          )}
+        </div>
 
-          {error && <div className="error-message">{error}</div>}
-
+        <div style={{
+          textAlign: 'center',
+          color: 'white'
+        }}>
           <button
-            type="submit"
-            className="button button-primary"
-            style={{ width: '100%', marginTop: '16px' }}
-            disabled={loading}
+            onClick={() => setShowSignUp(!showSignUp)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {showSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
-        </form>
+        </div>
 
-        <div style={{ marginTop: '24px', padding: '16px', background: '#f9fafb', borderRadius: '4px' }}>
+        <div style={{
+          marginTop: '16px',
+          padding: '16px',
+          background: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '8px',
+          width: '100%'
+        }}>
+          <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px', fontWeight: 'bold' }}>
+            Note for Setup:
+          </p>
           <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-            <strong>Demo Credentials:</strong>
+            After creating a user in Clerk, you need to set their role in the public metadata:
           </p>
-          <p style={{ fontSize: '12px', color: '#6b7280' }}>
-            Admin: admin / admin
-          </p>
+          <ul style={{ fontSize: '12px', color: '#6b7280', paddingLeft: '20px' }}>
+            <li>Go to Clerk Dashboard Users</li>
+            <li>Select the user</li>
+            <li>Add to public_metadata: {`{ "role": "ADMIN" }`} or {`{ "role": "BUSINESS" }`}</li>
+          </ul>
         </div>
       </div>
     </div>

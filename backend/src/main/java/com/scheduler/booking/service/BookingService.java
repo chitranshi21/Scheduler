@@ -1,9 +1,11 @@
 package com.scheduler.booking.service;
 
 import com.scheduler.booking.dto.BookingRequest;
+import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
 import com.scheduler.booking.model.Customer;
 import com.scheduler.booking.model.SessionType;
+import com.scheduler.booking.repository.BlockedSlotRepository;
 import com.scheduler.booking.repository.BookingRepository;
 import com.scheduler.booking.repository.CustomerRepository;
 import com.scheduler.booking.repository.SessionTypeRepository;
@@ -22,6 +24,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final SessionTypeRepository sessionTypeRepository;
     private final CustomerRepository customerRepository;
+    private final BlockedSlotRepository blockedSlotRepository;
 
     public List<Booking> getBookingsByTenant(UUID tenantId) {
         return bookingRepository.findByTenantId(tenantId);
@@ -45,6 +48,17 @@ public class BookingService {
         SessionType sessionType = sessionTypeRepository.findByIdAndTenantId(
                 request.getSessionTypeId(), tenantId)
                 .orElseThrow(() -> new RuntimeException("Session type not found"));
+
+        // Calculate end time
+        LocalDateTime endTime = request.getStartTime().plusMinutes(sessionType.getDurationMinutes());
+
+        // Check if the time slot is blocked
+        List<BlockedSlot> conflictingBlocks = blockedSlotRepository.findConflictingSlots(
+                tenantId, request.getStartTime(), endTime);
+
+        if (!conflictingBlocks.isEmpty()) {
+            throw new RuntimeException("This time slot is not available. Please choose another time.");
+        }
 
         // If customer ID not provided, create or find customer by email
         if (customerId == null && request.getEmail() != null) {

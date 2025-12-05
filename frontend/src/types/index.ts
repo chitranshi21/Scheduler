@@ -40,6 +40,14 @@ export interface SessionType {
   isActive: boolean;
 }
 
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
 export interface Booking {
   id: string;
   tenantId: string;
@@ -51,5 +59,5 @@ export interface Booking {
   participants: number;
   notes?: string;
   sessionType?: SessionType;
-  customer?: any;
+  customer?: Customer;
 }

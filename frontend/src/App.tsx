@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { useEffect } from 'react';
+import { setupApiAuth } from './services/api';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BusinessDashboard from './pages/BusinessDashboard';
@@ -7,13 +9,15 @@ import CustomerPortal from './pages/CustomerPortal';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useUser();
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" />;
   }
 
-  if (!allowedRoles.includes(user?.userType || '')) {
+  const userRole = user.publicMetadata?.role as string || 'CUSTOMER';
+
+  if (!allowedRoles.includes(userRole)) {
     return <Navigate to="/login" />;
   }
 
@@ -21,7 +25,19 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode;
 };
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, isLoaded } = useUser();
+  const { getToken } = useClerkAuth();
+  const userRole = user?.publicMetadata?.role as string || 'CUSTOMER';
+
+  // Setup API authentication with Clerk token
+  useEffect(() => {
+    setupApiAuth(getToken);
+  }, [getToken]);
+
+  // Show loading while Clerk is initializing
+  if (!isLoaded) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>;
+  }
 
   return (
     <Routes>
@@ -46,10 +62,14 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          user?.userType === 'ADMIN' ? (
-            <Navigate to="/admin" />
-          ) : user?.userType === 'BUSINESS' ? (
-            <Navigate to="/business" />
+          user ? (
+            userRole === 'ADMIN' ? (
+              <Navigate to="/admin" />
+            ) : userRole === 'BUSINESS' ? (
+              <Navigate to="/business" />
+            ) : (
+              <Navigate to="/login" />
+            )
           ) : (
             <Navigate to="/login" />
           )
@@ -62,9 +82,7 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AppRoutes />
     </Router>
   );
 }

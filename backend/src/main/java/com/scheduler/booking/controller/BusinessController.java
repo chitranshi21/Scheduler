@@ -1,11 +1,14 @@
 package com.scheduler.booking.controller;
 
+import com.scheduler.booking.dto.BlockedSlotRequest;
 import com.scheduler.booking.dto.BookingRequest;
 import com.scheduler.booking.dto.SessionTypeRequest;
+import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
 import com.scheduler.booking.model.BusinessUser;
 import com.scheduler.booking.model.SessionType;
 import com.scheduler.booking.model.Tenant;
+import com.scheduler.booking.repository.BlockedSlotRepository;
 import com.scheduler.booking.repository.BusinessUserRepository;
 import com.scheduler.booking.repository.TenantRepository;
 import com.scheduler.booking.service.BookingService;
@@ -24,18 +27,56 @@ import java.util.UUID;
 @RequestMapping("/api/business")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('BUSINESS')")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:5173" })
 public class BusinessController {
 
     private final SessionTypeService sessionTypeService;
     private final BookingService bookingService;
     private final BusinessUserRepository businessUserRepository;
     private final TenantRepository tenantRepository;
+    private final BlockedSlotRepository blockedSlotRepository;
 
     private UUID getTenantIdFromAuth(Authentication authentication) {
-        BusinessUser user = businessUserRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("Business user not found"));
-        return user.getTenantId();
+        String clerkUserId = authentication.getName();
+
+        System.out.println("=== BUSINESS AUTH DEBUG ===");
+        System.out.println("Clerk User ID: " + clerkUserId);
+        System.out.println("Authorities: " + authentication.getAuthorities());
+
+        // 1. Try to find by Clerk User ID
+        return businessUserRepository.findByClerkUserId(clerkUserId)
+                .map(user -> {
+                    System.out.println("Found BusinessUser by Clerk ID: " + user.getEmail());
+                    return user.getTenantId();
+                })
+                .orElseGet(() -> {
+                    System.out.println("BusinessUser not found by Clerk ID, trying JIT linking...");
+
+                    // 2. If not found, try to find by email (JIT Linking)
+                    if (authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken) {
+                        var jwt = ((org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken) authentication)
+                                .getToken();
+                        String email = com.scheduler.booking.security.ClerkJwtAuthenticationConverter.extractEmail(jwt);
+
+                        System.out.println("Email from JWT: " + email);
+                        System.out.println("JWT Claims: " + jwt.getClaims());
+
+                        if (email != null) {
+                            return businessUserRepository.findByEmail(email)
+                                    .map(user -> {
+                                        // Link the user
+                                        System.out.println("Linking BusinessUser by email: " + email);
+                                        user.setClerkUserId(clerkUserId);
+                                        businessUserRepository.save(user);
+                                        return user.getTenantId();
+                                    })
+                                    .orElseThrow(
+                                            () -> new RuntimeException("Business user not found for email: " + email));
+                        }
+                    }
+                    System.out.println("No email in JWT token for JIT linking");
+                    throw new RuntimeException("Business user not found and no email in token for JIT linking. Clerk User ID: " + clerkUserId);
+                });
     }
 
     @GetMapping("/tenant")
@@ -95,6 +136,48 @@ public class BusinessController {
     @DeleteMapping("/bookings/{id}")
     public ResponseEntity<Void> cancelBooking(@PathVariable UUID id) {
         bookingService.cancelBooking(id, "Cancelled by business");
+        return ResponseEntity.noContent().build();
+    }
+
+    // Blocked Slots endpoints
+    @GetMapping("/blocked-slots")
+    public ResponseEntity<List<BlockedSlot>> getBlockedSlots(Authentication authentication) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        return ResponseEntity.ok(blockedSlotRepository.findByTenantId(tenantId));
+    }
+
+    @PostMapping("/blocked-slots")
+    public ResponseEntity<BlockedSlot> createBlockedSlot(
+            Authentication authentication,
+            @Valid @RequestBody BlockedSlotRequest request) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        String clerkUserId = authentication.getName();
+
+        BlockedSlot blockedSlot = new BlockedSlot();
+        blockedSlot.setTenantId(tenantId);
+        blockedSlot.setStartTime(request.getStartTime());
+        blockedSlot.setEndTime(request.getEndTime());
+        blockedSlot.setReason(request.getReason());
+        blockedSlot.setCreatedBy(clerkUserId);
+
+        return ResponseEntity.ok(blockedSlotRepository.save(blockedSlot));
+    }
+
+    @DeleteMapping("/blocked-slots/{id}")
+    public ResponseEntity<Void> deleteBlockedSlot(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+
+        // Verify the blocked slot belongs to this tenant
+        BlockedSlot slot = blockedSlotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Blocked slot not found"));
+
+        if (!slot.getTenantId().equals(tenantId)) {
+            throw new RuntimeException("Unauthorized to delete this blocked slot");
+        }
+
+        blockedSlotRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

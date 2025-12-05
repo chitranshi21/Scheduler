@@ -6,7 +6,7 @@ import com.scheduler.booking.model.Tenant;
 import com.scheduler.booking.repository.BusinessUserRepository;
 import com.scheduler.booking.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +15,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final BusinessUserRepository businessUserRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final ClerkUserService clerkUserService;
 
     public List<Tenant> getAllTenants() {
         return tenantRepository.findAll();
@@ -36,6 +37,7 @@ public class TenantService {
             throw new RuntimeException("Slug already exists");
         }
 
+        // Create tenant first
         Tenant tenant = new Tenant();
         tenant.setName(request.getName());
         tenant.setSlug(request.getSlug());
@@ -44,21 +46,43 @@ public class TenantService {
         tenant.setLogoUrl(request.getLogoUrl());
         tenant.setDescription(request.getDescription());
         tenant.setBrandColors(request.getBrandColors());
-        tenant.setSubscriptionTier(request.getSubscriptionTier() != null ?
-                request.getSubscriptionTier() : "BASIC");
+        tenant.setSubscriptionTier(request.getSubscriptionTier() != null ? request.getSubscriptionTier() : "BASIC");
         tenant.setStatus("ACTIVE");
 
         tenant = tenantRepository.save(tenant);
+        log.info("Created tenant: {} with ID: {}", tenant.getName(), tenant.getId());
 
-        // Create default business owner account
-        BusinessUser owner = new BusinessUser();
-        owner.setTenantId(tenant.getId());
-        owner.setEmail(request.getEmail());
-        owner.setPasswordHash(passwordEncoder.encode("changeme123")); // Default password
-        owner.setFirstName("Owner");
-        owner.setLastName(tenant.getName());
-        owner.setRole("OWNER");
-        businessUserRepository.save(owner);
+        // Create business owner user in Clerk if details provided
+        if (request.getOwnerEmail() != null && request.getOwnerPassword() != null) {
+            String firstName = request.getOwnerFirstName() != null ? request.getOwnerFirstName() : "Business";
+            String lastName = request.getOwnerLastName() != null ? request.getOwnerLastName() : "Owner";
+
+            // Create user in Clerk
+            // Note: If this fails, the RuntimeException will propagate and cause the
+            // @Transactional createTenant method to rollback the tenant creation.
+            String clerkUserId = clerkUserService.createUser(
+                    request.getOwnerEmail(),
+                    request.getOwnerPassword(),
+                    firstName,
+                    lastName,
+                    "BUSINESS",
+                    tenant.getId().toString());
+
+            log.info("Created Clerk user for business owner: {}", clerkUserId);
+
+            // Create BusinessUser record
+            BusinessUser businessUser = new BusinessUser();
+            businessUser.setTenantId(tenant.getId());
+            businessUser.setEmail(request.getOwnerEmail());
+            businessUser.setClerkUserId(clerkUserId);
+            businessUser.setFirstName(firstName);
+            businessUser.setLastName(lastName);
+            businessUser.setRole("OWNER");
+            businessUser.setActive(true);
+
+            businessUserRepository.save(businessUser);
+            log.info("Created BusinessUser record for tenant: {}", tenant.getId());
+        }
 
         return tenant;
     }

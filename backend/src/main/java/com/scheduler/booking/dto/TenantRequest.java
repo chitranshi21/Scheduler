@@ -23,4 +23,10 @@ public class TenantRequest {
     private String description;
     private Map<String, String> brandColors;
     private String subscriptionTier;
+
+    // Business owner details (for creating Clerk user)
+    private String ownerFirstName;
+    private String ownerLastName;
+    private String ownerEmail;
+    private String ownerPassword;
 }

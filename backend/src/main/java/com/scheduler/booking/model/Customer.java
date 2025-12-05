@@ -24,7 +24,8 @@ public class Customer {
     @Column(unique = true, nullable = false)
     private String email;
 
-    private String passwordHash;
+    @Column(unique = true)
+    private String clerkUserId;
 
     @Column(nullable = false)
     private String firstName;

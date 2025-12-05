@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { adminAPI } from '../services/api';
 import type { Tenant } from '../types';
 
 export default function AdminDashboard() {
-  const { logout, user } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -14,7 +15,11 @@ export default function AdminDashboard() {
     email: '',
     phone: '',
     description: '',
-    subscriptionTier: 'BASIC'
+    subscriptionTier: 'BASIC',
+    ownerFirstName: '',
+    ownerLastName: '',
+    ownerEmail: '',
+    ownerPassword: ''
   });
 
   useEffect(() => {
@@ -34,13 +39,32 @@ export default function AdminDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('📝 Creating tenant with data:', formData);
     try {
-      await adminAPI.createTenant(formData);
+      const response = await adminAPI.createTenant(formData);
+      console.log('✅ Tenant created successfully:', response);
       setShowModal(false);
-      setFormData({ name: '', slug: '', email: '', phone: '', description: '', subscriptionTier: 'BASIC' });
+      setFormData({
+        name: '',
+        slug: '',
+        email: '',
+        phone: '',
+        description: '',
+        subscriptionTier: 'BASIC',
+        ownerFirstName: '',
+        ownerLastName: '',
+        ownerEmail: '',
+        ownerPassword: ''
+      });
       loadTenants();
-    } catch (error) {
-      alert('Failed to create tenant');
+      alert('Tenant and business owner created successfully! The owner can now log in with their credentials.');
+    } catch (error: any) {
+      console.error('❌ Error creating tenant:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create tenant';
+      alert('Error: ' + errorMessage);
     }
   };
 
@@ -60,9 +84,9 @@ export default function AdminDashboard() {
       <div className="navbar">
         <div>
           <div className="navbar-title">Admin Dashboard</div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>Welcome, {user?.name}</div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>Welcome, {user?.firstName} {user?.lastName}</div>
         </div>
-        <button onClick={logout} className="button button-secondary">
+        <button onClick={() => signOut()} className="button button-secondary">
           Logout
         </button>
       </div>
@@ -179,6 +203,62 @@ export default function AdminDashboard() {
                   rows={3}
                 />
               </div>
+
+              <hr style={{ margin: '24px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+              <h3 style={{ marginBottom: '16px', fontSize: '16px' }}>Business Owner Account</h3>
+
+              <div className="form-group">
+                <label className="form-label">Owner First Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.ownerFirstName}
+                  onChange={(e) => setFormData({ ...formData, ownerFirstName: e.target.value })}
+                  placeholder="John"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Owner Last Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.ownerLastName}
+                  onChange={(e) => setFormData({ ...formData, ownerLastName: e.target.value })}
+                  placeholder="Doe"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Owner Email (Login)</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={formData.ownerEmail}
+                  onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
+                  placeholder="owner@example.com"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Owner Password</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={formData.ownerPassword}
+                  onChange={(e) => setFormData({ ...formData, ownerPassword: e.target.value })}
+                  placeholder="Minimum 8 characters"
+                  required
+                  minLength={8}
+                />
+                <small style={{ color: '#6b7280', fontSize: '12px' }}>
+                  This will create a Clerk account with BUSINESS role
+                </small>
+              </div>
+
               <div className="modal-footer">
                 <button type="button" onClick={() => setShowModal(false)} className="button button-secondary">
                   Cancel

@@ -11,6 +11,10 @@ import java.util.UUID;
 @Repository
 public interface BusinessUserRepository extends JpaRepository<BusinessUser, UUID> {
     Optional<BusinessUser> findByEmail(String email);
+
+    Optional<BusinessUser> findByClerkUserId(String clerkUserId);
+
     List<BusinessUser> findByTenantId(UUID tenantId);
+
     Optional<BusinessUser> findByTenantIdAndEmail(UUID tenantId, String email);
 }

@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { businessAPI } from '../services/api';
 import type { SessionType, Booking, Tenant } from '../types';
+import WeeklySchedule from '../components/WeeklySchedule';
+import BusinessCalendar from '../components/BusinessCalendar';
 
 export default function BusinessDashboard() {
-  const { logout, user } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [activeTab, setActiveTab] = useState<'sessions' | 'bookings'>('sessions');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'calendar' | 'bookings'>('sessions');
   const [showModal, setShowModal] = useState(false);
+  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     durationMinutes: 30,
     price: 25,
+    currency: 'USD',
     capacity: 1,
     category: ''
   });
@@ -25,14 +30,23 @@ export default function BusinessDashboard() {
 
   const loadData = async () => {
     try {
-      const [tenantRes, sessionsRes, bookingsRes] = await Promise.all([
+      console.log('Loading business dashboard data...');
+      const [tenantRes, sessionsRes, bookingsRes, blockedSlotsRes] = await Promise.all([
         businessAPI.getTenant(),
         businessAPI.getSessionTypes(),
-        businessAPI.getBookings()
+        businessAPI.getBookings(),
+        businessAPI.getBlockedSlots()
       ]);
+      console.log('Data loaded:', {
+        tenant: tenantRes.data,
+        sessionsCount: sessionsRes.data.length,
+        bookingsCount: bookingsRes.data.length,
+        blockedSlotsCount: blockedSlotsRes.data.length
+      });
       setTenant(tenantRes.data);
       setSessions(sessionsRes.data);
       setBookings(bookingsRes.data);
+      setBlockedSlots(blockedSlotsRes.data);
     } catch (error) {
       console.error('Failed to load data', error);
     }
@@ -40,13 +54,21 @@ export default function BusinessDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('📝 Creating session type with data:', formData);
     try {
-      await businessAPI.createSessionType(formData);
+      const response = await businessAPI.createSessionType(formData);
+      console.log('✅ Session type created successfully:', response);
       setShowModal(false);
-      setFormData({ name: '', description: '', durationMinutes: 30, price: 25, capacity: 1, category: '' });
+      setFormData({ name: '', description: '', durationMinutes: 30, price: 25, currency: 'USD', capacity: 1, category: '' });
       loadData();
-    } catch (error) {
-      alert('Failed to create session type');
+      alert('Session type created successfully!');
+    } catch (error: any) {
+      console.error('❌ Error creating session type:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create session type';
+      alert('Error: ' + errorMessage);
     }
   };
 
@@ -72,14 +94,49 @@ export default function BusinessDashboard() {
     }
   };
 
+  const handleSaveSchedule = (schedule: any) => {
+    console.log('Saving schedule:', schedule);
+    // TODO: Implement API call to save schedule
+    alert('Schedule saved successfully!');
+  };
+
+  const handleBlockSlot = async (date: Date, startTime: string, endTime: string) => {
+    console.log('Blocking slot:', { date, startTime, endTime });
+    try {
+      const response = await businessAPI.createBlockedSlot({
+        startTime,
+        endTime,
+        reason: 'Blocked by business'
+      });
+      setBlockedSlots([...blockedSlots, response.data]);
+      alert('Time slot blocked successfully!');
+    } catch (error: any) {
+      console.error('Failed to block slot:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to block time slot';
+      alert('Error: ' + errorMessage);
+    }
+  };
+
+  const handleUnblockSlot = async (slotId: string) => {
+    try {
+      await businessAPI.deleteBlockedSlot(slotId);
+      setBlockedSlots(blockedSlots.filter(slot => slot.id !== slotId));
+      alert('Time slot unblocked successfully!');
+    } catch (error: any) {
+      console.error('Failed to unblock slot:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to unblock time slot';
+      alert('Error: ' + errorMessage);
+    }
+  };
+
   return (
     <div>
       <div className="navbar">
         <div>
           <div className="navbar-title">{tenant?.name || 'Business Dashboard'}</div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>Welcome, {user?.name}</div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>Welcome, {user?.firstName} {user?.lastName}</div>
         </div>
-        <button onClick={logout} className="button button-secondary">
+        <button onClick={() => signOut()} className="button button-secondary">
           Logout
         </button>
       </div>
@@ -115,6 +172,23 @@ export default function BusinessDashboard() {
               }}
             >
               Session Types
+            </button>
+            <button
+              onClick={() => {
+                console.log('Switching to calendar tab');
+                setActiveTab('calendar');
+              }}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                borderBottom: activeTab === 'calendar' ? '2px solid #4f46e5' : 'none',
+                color: activeTab === 'calendar' ? '#4f46e5' : '#6b7280',
+                fontWeight: activeTab === 'calendar' ? '600' : '400'
+              }}
+            >
+              Calendar
             </button>
             <button
               onClick={() => setActiveTab('bookings')}
@@ -163,6 +237,30 @@ export default function BusinessDashboard() {
                 ))}
               </div>
             </>
+          )}
+
+          {activeTab === 'calendar' && (
+            <div style={{ padding: '20px', background: '#f9fafb', minHeight: '400px' }}>
+              <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '20px' }}>Calendar View</h3>
+              <p style={{ marginBottom: '24px', color: '#6b7280' }}>
+                Debug Info - Bookings: {bookings.length}, Blocked Slots: {blockedSlots.length}
+              </p>
+
+              <div style={{ marginBottom: '32px', background: 'white', padding: '20px', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '16px' }}>Weekly Schedule</h4>
+                <WeeklySchedule onSave={handleSaveSchedule} />
+              </div>
+
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '16px' }}>Business Calendar</h4>
+                <BusinessCalendar
+                  bookings={bookings}
+                  blockedSlots={blockedSlots}
+                  onBlockSlot={handleBlockSlot}
+                  onUnblockSlot={handleUnblockSlot}
+                />
+              </div>
+            </div>
           )}
 
           {activeTab === 'bookings' && (

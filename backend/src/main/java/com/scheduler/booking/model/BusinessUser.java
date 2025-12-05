@@ -29,8 +29,8 @@ public class BusinessUser {
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private String passwordHash;
+    @Column(unique = true)
+    private String clerkUserId;
 
     private String firstName;
     private String lastName;
