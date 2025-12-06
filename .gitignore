@@ -4,6 +4,7 @@ target
 .project
 .classpath
 dist
+.env
 
 # Numerous always-ignore extensions
 *.bak

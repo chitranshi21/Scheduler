@@ -73,6 +73,12 @@
             <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
         </dependency>
 
+        <!-- Liquibase for database migrations -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

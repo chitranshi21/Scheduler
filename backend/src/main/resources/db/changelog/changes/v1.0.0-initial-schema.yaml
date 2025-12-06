@@ -1,0 +1,532 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-tenants-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: tenants
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slug
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phone
+                  type: VARCHAR(255)
+              - column:
+                  name: logo_url
+                  type: VARCHAR(512)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: brand_colors
+                  type: JSON
+              - column:
+                  name: custom_domain
+                  type: VARCHAR(255)
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "ACTIVE"
+              - column:
+                  name: subscription_tier
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "BASIC"
+              - column:
+                  name: subscription_expires_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 2-create-admins-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: admins
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: clerk_user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+              - column:
+                  name: first_name
+                  type: VARCHAR(255)
+              - column:
+                  name: last_name
+                  type: VARCHAR(255)
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "ADMIN"
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: last_login_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 3-create-business-users-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: business_users
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: clerk_user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+              - column:
+                  name: first_name
+                  type: VARCHAR(255)
+              - column:
+                  name: last_name
+                  type: VARCHAR(255)
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "OWNER"
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: last_login_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - addUniqueConstraint:
+            tableName: business_users
+            columnNames: tenant_id, email
+            constraintName: uk_business_users_tenant_email
+
+  - changeSet:
+      id: 4-create-customers-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: clerk_user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    unique: true
+              - column:
+                  name: first_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phone
+                  type: VARCHAR(50)
+              - column:
+                  name: timezone
+                  type: VARCHAR(50)
+                  defaultValue: "UTC"
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 5-create-session-types-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: session_types
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: duration_minutes
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: VARCHAR(3)
+                  constraints:
+                    nullable: false
+                  defaultValue: "USD"
+              - column:
+                  name: capacity
+                  type: INTEGER
+                  defaultValueNumeric: 1
+              - column:
+                  name: category
+                  type: VARCHAR(255)
+              - column:
+                  name: color
+                  type: VARCHAR(50)
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+              - column:
+                  name: cancellation_policy
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 6-create-bookings-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: bookings
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_type_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "PENDING"
+              - column:
+                  name: participants
+                  type: INTEGER
+                  defaultValueNumeric: 1
+              - column:
+                  name: notes
+                  type: TEXT
+              - column:
+                  name: customer_timezone
+                  type: VARCHAR(50)
+              - column:
+                  name: cancellation_reason
+                  type: TEXT
+              - column:
+                  name: cancelled_at
+                  type: TIMESTAMP
+              - column:
+                  name: cancelled_by
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableName: bookings
+            baseColumnNames: customer_id
+            referencedTableName: customers
+            referencedColumnNames: id
+            constraintName: fk_bookings_customer
+        - addForeignKeyConstraint:
+            baseTableName: bookings
+            baseColumnNames: session_type_id
+            referencedTableName: session_types
+            referencedColumnNames: id
+            constraintName: fk_bookings_session_type
+
+  - changeSet:
+      id: 7-create-blocked-slots-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: blocked_slots
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: TEXT
+              - column:
+                  name: created_by
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 8-create-payments-table
+      author: scheduler-team
+      changes:
+        - createTable:
+            tableName: payments
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: booking_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: VARCHAR(3)
+                  constraints:
+                    nullable: false
+                  defaultValue: "USD"
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: "PENDING"
+              - column:
+                  name: payment_method
+                  type: VARCHAR(100)
+              - column:
+                  name: stripe_payment_intent_id
+                  type: VARCHAR(255)
+              - column:
+                  name: stripe_charge_id
+                  type: VARCHAR(255)
+              - column:
+                  name: refund_amount
+                  type: DECIMAL(10,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: refunded_at
+                  type: TIMESTAMP
+              - column:
+                  name: failure_reason
+                  type: TEXT
+              - column:
+                  name: metadata
+                  type: JSON
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+
+  - changeSet:
+      id: 9-create-indexes
+      author: scheduler-team
+      changes:
+        - createIndex:
+            tableName: business_users
+            indexName: idx_business_users_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            tableName: session_types
+            indexName: idx_session_types_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            tableName: bookings
+            indexName: idx_bookings_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            tableName: bookings
+            indexName: idx_bookings_customer_id
+            columns:
+              - column:
+                  name: customer_id
+        - createIndex:
+            tableName: bookings
+            indexName: idx_bookings_start_time
+            columns:
+              - column:
+                  name: start_time
+        - createIndex:
+            tableName: blocked_slots
+            indexName: idx_blocked_slots_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            tableName: payments
+            indexName: idx_payments_booking_id
+            columns:
+              - column:
+                  name: booking_id
