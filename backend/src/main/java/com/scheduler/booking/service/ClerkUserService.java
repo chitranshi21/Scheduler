@@ -47,6 +47,11 @@ public class ClerkUserService {
             body.put("password", password);
             body.put("first_name", firstName);
             body.put("last_name", lastName);
+
+            // Generate username from email (part before @)
+            String username = email.split("@")[0].replaceAll("[^a-zA-Z0-9_-]", "_");
+            body.put("username", username);
+
             body.put("skip_password_checks", true); // For demo purposes
             body.put("skip_password_requirement", false);
 
