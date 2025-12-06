@@ -1,5 +1,6 @@
 package com.scheduler.booking.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -20,9 +21,11 @@ public class BlockedSlot {
     private UUID tenantId;
 
     @Column(name = "start_time", nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime startTime;
 
     @Column(name = "end_time", nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime endTime;
 
     @Column(name = "reason")
@@ -33,9 +36,11 @@ public class BlockedSlot {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime updatedAt;
 }

@@ -3,7 +3,6 @@ package com.scheduler.booking.dto;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -12,7 +11,7 @@ public class BookingRequest {
     private UUID sessionTypeId;
 
     @NotNull(message = "Start time is required")
-    private LocalDateTime startTime;
+    private Long startTime; // Epoch timestamp in milliseconds
 
     private Integer participants = 1;
     private String notes;

@@ -1,5 +1,6 @@
 package com.scheduler.booking.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,10 +31,21 @@ public class Booking {
     @Column(name = "session_type_id", nullable = false)
     private UUID sessionTypeId;
 
+    // Transient fields for JSON serialization
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", insertable = false, updatable = false)
+    private Customer customer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "session_type_id", insertable = false, updatable = false)
+    private SessionType sessionType;
+
     @Column(nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime startTime;
 
     @Column(nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime endTime;
 
     @Column(nullable = false)
@@ -46,13 +58,18 @@ public class Booking {
 
     private String customerTimezone;
     private String cancellationReason;
+
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime cancelledAt;
+
     private String cancelledBy;
 
     @CreationTimestamp
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private LocalDateTime updatedAt;
 
     public String getConfirmationNumber() {

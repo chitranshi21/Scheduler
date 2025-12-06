@@ -70,7 +70,7 @@ export const businessAPI = {
   getBookings: () => api.get<Booking[]>('/business/bookings'),
   cancelBooking: (id: string) => api.delete(`/business/bookings/${id}`),
   getBlockedSlots: () => api.get<any[]>('/business/blocked-slots'),
-  createBlockedSlot: (data: { startTime: string; endTime: string; reason?: string }) =>
+  createBlockedSlot: (data: { startTime: number; endTime: number; reason?: string }) =>
     api.post<any>('/business/blocked-slots', data),
   deleteBlockedSlot: (id: string) => api.delete(`/business/blocked-slots/${id}`),
 };

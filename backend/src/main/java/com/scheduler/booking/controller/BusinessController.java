@@ -122,7 +122,23 @@ public class BusinessController {
     @GetMapping("/bookings")
     public ResponseEntity<List<Booking>> getBookings(Authentication authentication) {
         UUID tenantId = getTenantIdFromAuth(authentication);
-        return ResponseEntity.ok(bookingService.getUpcomingBookings(tenantId));
+        List<Booking> bookings = bookingService.getUpcomingBookings(tenantId);
+
+        // Debug logging to see what's being returned
+        System.out.println("=== BOOKINGS RESPONSE DEBUG ===");
+        System.out.println("Total bookings: " + bookings.size());
+        for (Booking booking : bookings) {
+            System.out.println("Booking ID: " + booking.getId());
+            System.out.println("  Start Time: " + booking.getStartTime());
+            System.out.println("  End Time: " + booking.getEndTime());
+            System.out.println("  Customer: " + (booking.getCustomer() != null ? booking.getCustomer().getFirstName() + " " + booking.getCustomer().getLastName() : "NULL"));
+            System.out.println("  Session Type: " + (booking.getSessionType() != null ? booking.getSessionType().getName() : "NULL"));
+            System.out.println("  Customer loaded: " + (booking.getCustomer() != null));
+            System.out.println("  SessionType loaded: " + (booking.getSessionType() != null));
+        }
+        System.out.println("================================");
+
+        return ResponseEntity.ok(bookings);
     }
 
     @PostMapping("/bookings")
@@ -143,7 +159,20 @@ public class BusinessController {
     @GetMapping("/blocked-slots")
     public ResponseEntity<List<BlockedSlot>> getBlockedSlots(Authentication authentication) {
         UUID tenantId = getTenantIdFromAuth(authentication);
-        return ResponseEntity.ok(blockedSlotRepository.findByTenantId(tenantId));
+        List<BlockedSlot> slots = blockedSlotRepository.findByTenantId(tenantId);
+
+        System.out.println("=== BLOCKED SLOTS RESPONSE DEBUG ===");
+        System.out.println("Total blocked slots: " + slots.size());
+        for (BlockedSlot slot : slots) {
+            System.out.println("Slot ID: " + slot.getId());
+            System.out.println("  Start Time (LocalDateTime): " + slot.getStartTime());
+            System.out.println("  End Time (LocalDateTime): " + slot.getEndTime());
+            System.out.println("  Start epoch: " + slot.getStartTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+            System.out.println("  End epoch: " + slot.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+        }
+        System.out.println("====================================");
+
+        return ResponseEntity.ok(slots);
     }
 
     @PostMapping("/blocked-slots")
@@ -153,10 +182,17 @@ public class BusinessController {
         UUID tenantId = getTenantIdFromAuth(authentication);
         String clerkUserId = authentication.getName();
 
+        // Convert epoch timestamps to LocalDateTime
+        java.time.Instant startInstant = java.time.Instant.ofEpochMilli(request.getStartTime());
+        java.time.Instant endInstant = java.time.Instant.ofEpochMilli(request.getEndTime());
+
+        java.time.LocalDateTime startTime = java.time.LocalDateTime.ofInstant(startInstant, java.time.ZoneId.systemDefault());
+        java.time.LocalDateTime endTime = java.time.LocalDateTime.ofInstant(endInstant, java.time.ZoneId.systemDefault());
+
         BlockedSlot blockedSlot = new BlockedSlot();
         blockedSlot.setTenantId(tenantId);
-        blockedSlot.setStartTime(request.getStartTime());
-        blockedSlot.setEndTime(request.getEndTime());
+        blockedSlot.setStartTime(startTime);
+        blockedSlot.setEndTime(endTime);
         blockedSlot.setReason(request.getReason());
         blockedSlot.setCreatedBy(clerkUserId);
 

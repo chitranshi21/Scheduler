@@ -14,6 +14,8 @@ export default function BusinessDashboard() {
   const [activeTab, setActiveTab] = useState<'sessions' | 'calendar' | 'bookings'>('sessions');
   const [showModal, setShowModal] = useState(false);
   const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -30,6 +32,8 @@ export default function BusinessDashboard() {
 
   const loadData = async () => {
     try {
+      setLoading(true);
+      setError(null);
       console.log('Loading business dashboard data...');
       const [tenantRes, sessionsRes, bookingsRes, blockedSlotsRes] = await Promise.all([
         businessAPI.getTenant(),
@@ -41,14 +45,18 @@ export default function BusinessDashboard() {
         tenant: tenantRes.data,
         sessionsCount: sessionsRes.data.length,
         bookingsCount: bookingsRes.data.length,
-        blockedSlotsCount: blockedSlotsRes.data.length
+        blockedSlotsCount: blockedSlotsRes.data.length,
+        bookingsSample: bookingsRes.data[0] // Log first booking to see structure
       });
       setTenant(tenantRes.data);
-      setSessions(sessionsRes.data);
-      setBookings(bookingsRes.data);
-      setBlockedSlots(blockedSlotsRes.data);
-    } catch (error) {
+      setSessions(Array.isArray(sessionsRes.data) ? sessionsRes.data : []);
+      setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
+      setBlockedSlots(Array.isArray(blockedSlotsRes.data) ? blockedSlotsRes.data : []);
+      setLoading(false);
+    } catch (error: any) {
       console.error('Failed to load data', error);
+      setError(error.response?.data?.message || error.message || 'Failed to load dashboard data');
+      setLoading(false);
     }
   };
 
@@ -100,12 +108,41 @@ export default function BusinessDashboard() {
     alert('Schedule saved successfully!');
   };
 
-  const handleBlockSlot = async (date: Date, startTime: string, endTime: string) => {
-    console.log('Blocking slot:', { date, startTime, endTime });
+  const formatDateTime = (timestamp: number | undefined | null): string => {
     try {
+      if (!timestamp && timestamp !== 0) {
+        console.error('No timestamp provided:', timestamp);
+        return 'No Date';
+      }
+
+      // Convert epoch timestamp to date
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        console.error('Invalid epoch timestamp:', timestamp);
+        return 'Invalid Date';
+      }
+
+      return date.toLocaleString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', timestamp, error);
+      return 'Invalid Date';
+    }
+  };
+
+  const handleBlockSlot = async (date: Date, startTimeEpoch: string, endTimeEpoch: string) => {
+    console.log('Blocking slot:', { date, startTimeEpoch, endTimeEpoch });
+    try {
+      // Send epoch timestamps as numbers to the backend
       const response = await businessAPI.createBlockedSlot({
-        startTime,
-        endTime,
+        startTime: parseInt(startTimeEpoch),
+        endTime: parseInt(endTimeEpoch),
         reason: 'Blocked by business'
       });
       setBlockedSlots([...blockedSlots, response.data]);
@@ -142,7 +179,23 @@ export default function BusinessDashboard() {
       </div>
 
       <div className="container">
-        {tenant && (
+        {loading && (
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <p>Loading dashboard...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="card" style={{ background: '#fee2e2', color: '#991b1b', padding: '20px', marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 10px 0' }}>Error Loading Dashboard</h3>
+            <p style={{ margin: 0 }}>{error}</p>
+            <button onClick={loadData} className="button button-primary" style={{ marginTop: '12px' }}>
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && tenant && (
           <div className="card">
             <h3>Your Booking Link</h3>
             <div style={{
@@ -280,7 +333,7 @@ export default function BusinessDashboard() {
                   {bookings.map((booking) => (
                     <tr key={booking.id}>
                       <td>{booking.sessionType?.name}</td>
-                      <td>{new Date(booking.startTime).toLocaleString()}</td>
+                      <td>{formatDateTime(booking.startTime)}</td>
                       <td>{booking.customer?.firstName} {booking.customer?.lastName}</td>
                       <td>
                         <span style={{

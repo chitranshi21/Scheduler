@@ -56,9 +56,18 @@ export default function CustomerPortal() {
     if (!selectedSession || !tenant) return;
 
     try {
+      // Convert startTime to epoch timestamp (milliseconds)
+      const startTimeEpoch = new Date(bookingData.startTime).getTime();
+
+      console.log('Creating booking with epoch timestamp:', {
+        startTime: bookingData.startTime,
+        startTimeEpoch,
+        sessionTypeId: selectedSession.id
+      });
+
       await customerAPI.createBooking(tenant.id, {
         sessionTypeId: selectedSession.id,
-        startTime: new Date(bookingData.startTime).toISOString(),
+        startTime: startTimeEpoch,
         firstName: bookingData.firstName,
         lastName: bookingData.lastName,
         email: bookingData.email,
@@ -74,8 +83,10 @@ export default function CustomerPortal() {
         setSelectedSession(null);
         setSuccess(false);
       }, 3000);
-    } catch (error) {
-      alert('Failed to create booking. Please try again.');
+    } catch (error: any) {
+      console.error('Failed to create booking:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create booking. Please try again.';
+      alert(errorMessage);
     }
   };
 

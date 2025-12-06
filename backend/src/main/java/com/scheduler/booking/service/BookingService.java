@@ -31,7 +31,7 @@ public class BookingService {
     }
 
     public List<Booking> getUpcomingBookings(UUID tenantId) {
-        return bookingRepository.findUpcomingBookings(tenantId, LocalDateTime.now());
+        return bookingRepository.findUpcomingBookingsWithDetails(tenantId, LocalDateTime.now());
     }
 
     public List<Booking> getBookingsByCustomer(UUID customerId) {
@@ -49,12 +49,16 @@ public class BookingService {
                 request.getSessionTypeId(), tenantId)
                 .orElseThrow(() -> new RuntimeException("Session type not found"));
 
+        // Convert epoch timestamp to LocalDateTime
+        java.time.Instant startInstant = java.time.Instant.ofEpochMilli(request.getStartTime());
+        LocalDateTime startTime = LocalDateTime.ofInstant(startInstant, java.time.ZoneId.systemDefault());
+
         // Calculate end time
-        LocalDateTime endTime = request.getStartTime().plusMinutes(sessionType.getDurationMinutes());
+        LocalDateTime endTime = startTime.plusMinutes(sessionType.getDurationMinutes());
 
         // Check if the time slot is blocked
         List<BlockedSlot> conflictingBlocks = blockedSlotRepository.findConflictingSlots(
-                tenantId, request.getStartTime(), endTime);
+                tenantId, startTime, endTime);
 
         if (!conflictingBlocks.isEmpty()) {
             throw new RuntimeException("This time slot is not available. Please choose another time.");
@@ -82,8 +86,8 @@ public class BookingService {
         booking.setTenantId(tenantId);
         booking.setCustomerId(customerId);
         booking.setSessionTypeId(sessionType.getId());
-        booking.setStartTime(request.getStartTime());
-        booking.setEndTime(request.getStartTime().plusMinutes(sessionType.getDurationMinutes()));
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
         booking.setParticipants(request.getParticipants());
         booking.setNotes(request.getNotes());
         booking.setCustomerTimezone(request.getCustomerTimezone());

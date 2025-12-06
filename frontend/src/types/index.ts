@@ -53,8 +53,8 @@ export interface Booking {
   tenantId: string;
   customerId: string;
   sessionTypeId: string;
-  startTime: string;
-  endTime: string;
+  startTime: number; // Epoch timestamp in milliseconds
+  endTime: number;   // Epoch timestamp in milliseconds
   status: string;
   participants: number;
   notes?: string;

@@ -20,4 +20,11 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     @Query("SELECT b FROM Booking b WHERE b.tenantId = :tenantId AND b.startTime >= :from ORDER BY b.startTime ASC")
     List<Booking> findUpcomingBookings(UUID tenantId, LocalDateTime from);
+
+    @Query("SELECT b FROM Booking b " +
+           "LEFT JOIN FETCH b.sessionType " +
+           "LEFT JOIN FETCH b.customer " +
+           "WHERE b.tenantId = :tenantId AND b.startTime >= :from " +
+           "ORDER BY b.startTime ASC")
+    List<Booking> findUpcomingBookingsWithDetails(UUID tenantId, LocalDateTime from);
 }
