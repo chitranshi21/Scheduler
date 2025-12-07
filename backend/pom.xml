@@ -86,6 +86,13 @@
             <version>2.1.0</version>
         </dependency>
 
+        <!-- Stripe for payment processing -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>25.0.0</version>
+        </dependency>
+
         <!-- iCal4j for ICS calendar file generation -->
         <dependency>
             <groupId>org.mnode.ical4j</groupId>

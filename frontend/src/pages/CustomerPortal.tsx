@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { customerAPI } from '../services/api';
+import { customerAPI, stripeAPI } from '../services/api';
 import type { Tenant, SessionType } from '../types';
 import BookingCalendar from '../components/BookingCalendar';
 
@@ -65,7 +65,8 @@ export default function CustomerPortal() {
         sessionTypeId: selectedSession.id
       });
 
-      await customerAPI.createBooking(tenant.id, {
+      // Create the booking first
+      const bookingResponse = await customerAPI.createBooking(tenant.id, {
         sessionTypeId: selectedSession.id,
         startTime: startTimeEpoch,
         firstName: bookingData.firstName,
@@ -76,13 +77,15 @@ export default function CustomerPortal() {
         participants: 1
       });
 
-      setSuccess(true);
-      setBookingData({ firstName: '', lastName: '', email: '', phone: '', startTime: '', notes: '' });
-      setTimeout(() => {
-        setShowBookingForm(false);
-        setSelectedSession(null);
-        setSuccess(false);
-      }, 3000);
+      console.log('Booking created:', bookingResponse.data);
+
+      // Create Stripe checkout session and redirect to payment
+      const checkoutResponse = await stripeAPI.createCheckoutSession(bookingResponse.data.id);
+      console.log('Stripe checkout session created:', checkoutResponse.data);
+
+      // Redirect to Stripe checkout
+      window.location.href = checkoutResponse.data.checkoutUrl;
+
     } catch (error: any) {
       console.error('Failed to create booking:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to create booking. Please try again.';

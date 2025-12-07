@@ -46,6 +46,13 @@ public class Payment {
     private String paymentMethod;
     private String stripePaymentIntentId;
     private String stripeChargeId;
+    private String stripeCheckoutSessionId;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal platformFee = BigDecimal.ZERO;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal businessAmount = BigDecimal.ZERO;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal refundAmount = BigDecimal.ZERO;

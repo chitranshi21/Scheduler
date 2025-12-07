@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1.2.0-add-stripe-checkout-session
+      author: scheduler
+      changes:
+        - addColumn:
+            tableName: payments
+            columns:
+              - column:
+                  name: stripe_checkout_session_id
+                  type: varchar(255)
+                  remarks: "Stripe Checkout Session ID"
+              - column:
+                  name: platform_fee
+                  type: decimal(10,2)
+                  defaultValueNumeric: 0.00
+                  remarks: "Platform management fee (5%)"
+              - column:
+                  name: business_amount
+                  type: decimal(10,2)
+                  defaultValueNumeric: 0.00
+                  remarks: "Amount that goes to the business"

@@ -278,7 +278,7 @@ export default function BusinessDashboard() {
                     </p>
                     <div style={{ marginTop: '12px', fontSize: '14px' }}>
                       <div>Duration: {session.durationMinutes} minutes</div>
-                      <div>Price: ${session.price}</div>
+                      <div>Price: {session.currency === 'EUR' ? '€' : '$'}{session.price}</div>
                       <div>Capacity: {session.capacity} people</div>
                       {session.meetingLink && (
                         <div style={{ marginTop: '8px', padding: '8px', background: '#eff6ff', borderRadius: '4px' }}>
@@ -412,16 +412,28 @@ export default function BusinessDashboard() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Price ($)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                  min="0"
-                  step="0.01"
-                  required
-                />
+                <label className="form-label">Price</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                    min="0"
+                    step="0.01"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                  <select
+                    className="form-input"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    style={{ width: '100px' }}
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Capacity</label>

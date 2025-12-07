@@ -93,7 +93,7 @@ public class BookingService {
         booking.setParticipants(request.getParticipants());
         booking.setNotes(request.getNotes());
         booking.setCustomerTimezone(request.getCustomerTimezone());
-        booking.setStatus("CONFIRMED");
+        booking.setStatus("PENDING_PAYMENT"); // Will be updated to CONFIRMED after successful payment
 
         Booking savedBooking = bookingRepository.save(booking);
 

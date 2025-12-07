@@ -84,4 +84,12 @@ export const customerAPI = {
     api.post<Booking>(`/customer/tenants/${tenantId}/bookings`, data),
 };
 
+// Stripe API
+export const stripeAPI = {
+  createCheckoutSession: (bookingId: string) =>
+    api.post<{ checkoutUrl: string; sessionId: string }>('/stripe/create-checkout-session', { bookingId }),
+  getConfig: () =>
+    api.get<{ publishableKey: string }>('/stripe/config'),
+};
+
 export default api;
