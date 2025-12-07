@@ -50,7 +50,7 @@ public class EmailService {
 
             // Generate email body
             String htmlBody = buildCustomerEmailBody(customerName, sessionName, formattedDateTime,
-                    booking.getSessionType().getDurationMinutes(), tenant);
+                    booking.getSessionType().getDurationMinutes(), tenant, booking.getStartTime(), booking.getEndTime());
 
             // Generate ICS file
             byte[] icsFile = calendarService.generateIcsFile(
@@ -105,7 +105,8 @@ public class EmailService {
             // Generate email body
             String htmlBody = buildBusinessEmailBody(customerName, booking.getCustomer().getEmail(),
                     booking.getCustomer().getPhone(), sessionName, formattedDateTime,
-                    booking.getSessionType().getDurationMinutes(), booking.getNotes());
+                    booking.getSessionType().getDurationMinutes(), booking.getNotes(),
+                    booking.getStartTime(), booking.getEndTime());
 
             // Generate ICS file
             byte[] icsFile = calendarService.generateIcsFile(
@@ -181,11 +182,64 @@ public class EmailService {
     }
 
     /**
+     * Generate Google Calendar URL
+     */
+    private String generateGoogleCalendarUrl(String title, String description, LocalDateTime startTime, LocalDateTime endTime) {
+        try {
+            String start = startTime.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"));
+            String end = endTime.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"));
+
+            return String.format(
+                "https://calendar.google.com/calendar/render?action=TEMPLATE&text=%s&dates=%s/%s&details=%s",
+                java.net.URLEncoder.encode(title, "UTF-8"),
+                start,
+                end,
+                java.net.URLEncoder.encode(description, "UTF-8")
+            );
+        } catch (Exception e) {
+            return "#";
+        }
+    }
+
+    /**
+     * Generate Outlook Calendar URL
+     */
+    private String generateOutlookCalendarUrl(String title, String description, LocalDateTime startTime, LocalDateTime endTime) {
+        try {
+            String start = startTime.format(DateTimeFormatter.ISO_DATE_TIME);
+            String end = endTime.format(DateTimeFormatter.ISO_DATE_TIME);
+
+            return String.format(
+                "https://outlook.live.com/calendar/0/deeplink/compose?subject=%s&startdt=%s&enddt=%s&body=%s",
+                java.net.URLEncoder.encode(title, "UTF-8"),
+                start,
+                end,
+                java.net.URLEncoder.encode(description, "UTF-8")
+            );
+        } catch (Exception e) {
+            return "#";
+        }
+    }
+
+    /**
      * Build HTML email body for customer confirmation
      */
     private String buildCustomerEmailBody(String customerName, String sessionName,
                                          String formattedDateTime, int durationMinutes,
-                                         Tenant tenant) {
+                                         Tenant tenant, LocalDateTime startTime, LocalDateTime endTime) {
+        String googleCalUrl = generateGoogleCalendarUrl(
+            sessionName + " with " + tenant.getName(),
+            "Your session: " + sessionName,
+            startTime,
+            endTime
+        );
+
+        String outlookCalUrl = generateOutlookCalendarUrl(
+            sessionName + " with " + tenant.getName(),
+            "Your session: " + sessionName,
+            startTime,
+            endTime
+        );
         return String.format(
                 "<!DOCTYPE html>" +
                 "<html>" +
@@ -202,6 +256,10 @@ public class EmailService {
                 "        .label { font-weight: 600; color: #6b7280; }" +
                 "        .value { color: #1f2937; }" +
                 "        .calendar-note { background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px; }" +
+                "        .calendar-buttons { text-align: center; margin: 25px 0; }" +
+                "        .cal-btn { display: inline-block; margin: 8px; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: all 0.3s; }" +
+                "        .cal-btn-google { background: #4285f4; color: white; }" +
+                "        .cal-btn-outlook { background: #0078d4; color: white; }" +
                 "        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }" +
                 "    </style>" +
                 "</head>" +
@@ -233,9 +291,15 @@ public class EmailService {
                 "                </div>" +
                 "            </div>" +
                 "" +
+                "            <div class=\"calendar-buttons\">" +
+                "                <p style=\"font-weight: 600; color: #1f2937; margin-bottom: 15px;\">Add to Your Calendar</p>" +
+                "                <a href=\"%s\" class=\"cal-btn cal-btn-google\">+ Google Calendar</a>" +
+                "                <a href=\"%s\" class=\"cal-btn cal-btn-outlook\">+ Outlook</a>" +
+                "            </div>" +
+                "" +
                 "            <div class=\"calendar-note\">" +
-                "                <strong>Add to Calendar</strong><br>" +
-                "                An ICS calendar file is attached to this email. Simply open it to add this session to your calendar automatically!" +
+                "                <strong>Calendar File Attached</strong><br>" +
+                "                An ICS calendar file is also attached to this email. Open it to add this session to Apple Calendar, Outlook, or any other calendar app!" +
                 "            </div>" +
                 "" +
                 "            <p style=\"color: #4b5563; margin-top: 20px;\">If you need to reschedule or have any questions, please don't hesitate to reach out.</p>" +
@@ -250,7 +314,7 @@ public class EmailService {
                 "</body>" +
                 "</html>",
                 customerName, sessionName, formattedDateTime, durationMinutes,
-                tenant.getName(), tenant.getName());
+                tenant.getName(), googleCalUrl, outlookCalUrl, tenant.getName());
     }
 
     /**
@@ -259,10 +323,24 @@ public class EmailService {
     private String buildBusinessEmailBody(String customerName, String customerEmail,
                                          String customerPhone, String sessionName,
                                          String formattedDateTime, int durationMinutes,
-                                         String notes) {
+                                         String notes, LocalDateTime startTime, LocalDateTime endTime) {
         String notesSection = notes != null && !notes.isEmpty()
                 ? "<div class=\"notes\"><strong>Customer Notes:</strong><br>" + notes + "</div>"
                 : "";
+
+        String googleCalUrl = generateGoogleCalendarUrl(
+            sessionName + " - " + customerName,
+            "Customer: " + customerName + "\\nEmail: " + customerEmail + "\\nPhone: " + customerPhone,
+            startTime,
+            endTime
+        );
+
+        String outlookCalUrl = generateOutlookCalendarUrl(
+            sessionName + " - " + customerName,
+            "Customer: " + customerName + "\\nEmail: " + customerEmail + "\\nPhone: " + customerPhone,
+            startTime,
+            endTime
+        );
 
         return String.format(
                 "<!DOCTYPE html>" +
@@ -280,6 +358,10 @@ public class EmailService {
                 "        .label { font-weight: 600; color: #6b7280; }" +
                 "        .value { color: #1f2937; }" +
                 "        .notes { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }" +
+                "        .calendar-buttons { text-align: center; margin: 25px 0; }" +
+                "        .cal-btn { display: inline-block; margin: 8px; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; }" +
+                "        .cal-btn-google { background: #4285f4; color: white; }" +
+                "        .cal-btn-outlook { background: #0078d4; color: white; }" +
                 "        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }" +
                 "    </style>" +
                 "</head>" +
@@ -320,8 +402,14 @@ public class EmailService {
                 "" +
                 "            %s" +
                 "" +
+                "            <div class=\"calendar-buttons\">" +
+                "                <p style=\"font-weight: 600; color: #1f2937; margin-bottom: 15px;\">Add to Your Calendar</p>" +
+                "                <a href=\"%s\" class=\"cal-btn cal-btn-google\">+ Google Calendar</a>" +
+                "                <a href=\"%s\" class=\"cal-btn cal-btn-outlook\">+ Outlook</a>" +
+                "            </div>" +
+                "" +
                 "            <p style=\"color: #4b5563; margin-top: 20px;\">" +
-                "                An ICS calendar file is attached. Add it to your calendar to keep track of this appointment." +
+                "                An ICS calendar file is also attached. Open it to add to Apple Calendar or any other calendar app." +
                 "            </p>" +
                 "        </div>" +
                 "        <div class=\"footer\">" +
@@ -333,7 +421,7 @@ public class EmailService {
                 customerName, customerEmail, customerEmail,
                 customerPhone != null ? customerPhone : "Not provided",
                 sessionName, formattedDateTime, durationMinutes,
-                notesSection
+                notesSection, googleCalUrl, outlookCalUrl
         );
     }
 }
