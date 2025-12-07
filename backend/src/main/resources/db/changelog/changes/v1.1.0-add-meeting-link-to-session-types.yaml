@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1.1.0-add-meeting-link-columns
+      author: scheduler
+      changes:
+        - addColumn:
+            tableName: session_types
+            columns:
+              - column:
+                  name: meeting_link
+                  type: varchar(500)
+                  remarks: "Zoom/Meet/Teams link for virtual sessions"
+              - column:
+                  name: meeting_password
+                  type: varchar(50)
+                  remarks: "Optional meeting password"
+      rollback:
+        - dropColumn:
+            tableName: session_types
+            columns:
+              - column:
+                  name: meeting_link
+              - column:
+                  name: meeting_password

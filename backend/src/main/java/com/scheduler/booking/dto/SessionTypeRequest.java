@@ -27,4 +27,6 @@ public class SessionTypeRequest {
     private String category;
     private String color;
     private String cancellationPolicy;
+    private String meetingLink;
+    private String meetingPassword;
 }

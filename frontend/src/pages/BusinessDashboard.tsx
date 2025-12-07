@@ -23,7 +23,9 @@ export default function BusinessDashboard() {
     price: 25,
     currency: 'USD',
     capacity: 1,
-    category: ''
+    category: '',
+    meetingLink: '',
+    meetingPassword: ''
   });
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function BusinessDashboard() {
       const response = await businessAPI.createSessionType(formData);
       console.log('✅ Session type created successfully:', response);
       setShowModal(false);
-      setFormData({ name: '', description: '', durationMinutes: 30, price: 25, currency: 'USD', capacity: 1, category: '' });
+      setFormData({ name: '', description: '', durationMinutes: 30, price: 25, currency: 'USD', capacity: 1, category: '', meetingLink: '', meetingPassword: '' });
       loadData();
       alert('Session type created successfully!');
     } catch (error: any) {
@@ -278,6 +280,13 @@ export default function BusinessDashboard() {
                       <div>Duration: {session.durationMinutes} minutes</div>
                       <div>Price: ${session.price}</div>
                       <div>Capacity: {session.capacity} people</div>
+                      {session.meetingLink && (
+                        <div style={{ marginTop: '8px', padding: '8px', background: '#eff6ff', borderRadius: '4px' }}>
+                          📹 <a href={session.meetingLink} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none' }}>
+                            Google Meet Link
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleDeleteSession(session.id)}
@@ -425,6 +434,39 @@ export default function BusinessDashboard() {
                   required
                 />
               </div>
+
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px', marginTop: '16px' }}>
+                <h4 style={{ marginBottom: '12px', fontSize: '16px', color: '#1f2937' }}>📹 Virtual Meeting (Optional)</h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                  Add a Google Meet link for virtual sessions. Create a meeting at <a href="https://meet.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#4f46e5' }}>meet.google.com</a>
+                </p>
+
+                <div className="form-group">
+                  <label className="form-label">Google Meet Link</label>
+                  <input
+                    type="url"
+                    className="form-input"
+                    value={formData.meetingLink}
+                    onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
+                    placeholder="https://meet.google.com/abc-defg-hij"
+                  />
+                  <small style={{ color: '#6b7280', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                    This link will be included in booking confirmation emails
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Meeting Password (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formData.meetingPassword}
+                    onChange={(e) => setFormData({ ...formData, meetingPassword: e.target.value })}
+                    placeholder="Optional meeting password"
+                  />
+                </div>
+              </div>
+
               <div className="modal-footer">
                 <button type="button" onClick={() => setShowModal(false)} className="button button-secondary">
                   Cancel

@@ -48,6 +48,12 @@ public class SessionType {
     @Column(columnDefinition = "TEXT")
     private String cancellationPolicy;
 
+    @Column(length = 500)
+    private String meetingLink;  // Zoom/Meet/Teams link for virtual sessions
+
+    @Column(length = 50)
+    private String meetingPassword;  // Optional meeting password
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

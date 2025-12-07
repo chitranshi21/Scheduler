@@ -38,6 +38,8 @@ export interface SessionType {
   category?: string;
   color?: string;
   isActive: boolean;
+  meetingLink?: string;
+  meetingPassword?: string;
 }
 
 export interface Customer {

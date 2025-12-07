@@ -50,16 +50,25 @@ public class EmailService {
 
             // Generate email body
             String htmlBody = buildCustomerEmailBody(customerName, sessionName, formattedDateTime,
-                    booking.getSessionType().getDurationMinutes(), tenant, booking.getStartTime(), booking.getEndTime());
+                    booking.getSessionType().getDurationMinutes(), tenant, booking.getStartTime(), booking.getEndTime(),
+                    booking.getSessionType().getMeetingLink(), booking.getSessionType().getMeetingPassword());
 
-            // Generate ICS file
+            // Generate ICS file with Google Meet link
+            String meetingLink = booking.getSessionType().getMeetingLink();
+            String description = "Your session: " + sessionName + "\\n\\n";
+            if (meetingLink != null && !meetingLink.isEmpty()) {
+                description += "Join Google Meet: " + meetingLink + "\\n\\n";
+            }
+            if (booking.getNotes() != null) {
+                description += "Notes: " + booking.getNotes();
+            }
+
             byte[] icsFile = calendarService.generateIcsFile(
                     sessionName + " with " + tenant.getName(),
-                    "Your session: " + sessionName + "\\n\\n" +
-                    (booking.getNotes() != null ? "Notes: " + booking.getNotes() : ""),
+                    description,
                     booking.getStartTime(),
                     booking.getEndTime(),
-                    "Online Session", // You can customize this
+                    meetingLink != null && !meetingLink.isEmpty() ? meetingLink : "Online Session",
                     tenant.getEmail(),
                     tenant.getName(),
                     booking.getCustomer().getEmail(),
@@ -106,18 +115,27 @@ public class EmailService {
             String htmlBody = buildBusinessEmailBody(customerName, booking.getCustomer().getEmail(),
                     booking.getCustomer().getPhone(), sessionName, formattedDateTime,
                     booking.getSessionType().getDurationMinutes(), booking.getNotes(),
-                    booking.getStartTime(), booking.getEndTime());
+                    booking.getStartTime(), booking.getEndTime(),
+                    booking.getSessionType().getMeetingLink(), booking.getSessionType().getMeetingPassword());
 
-            // Generate ICS file
+            // Generate ICS file with Google Meet link
+            String meetingLinkBusiness = booking.getSessionType().getMeetingLink();
+            String descriptionBusiness = "Customer: " + customerName + "\\n" +
+                    "Email: " + booking.getCustomer().getEmail() + "\\n" +
+                    "Phone: " + booking.getCustomer().getPhone() + "\\n\\n";
+            if (meetingLinkBusiness != null && !meetingLinkBusiness.isEmpty()) {
+                descriptionBusiness += "Google Meet Link: " + meetingLinkBusiness + "\\n\\n";
+            }
+            if (booking.getNotes() != null) {
+                descriptionBusiness += "Notes: " + booking.getNotes();
+            }
+
             byte[] icsFile = calendarService.generateIcsFile(
                     sessionName + " - " + customerName,
-                    "Customer: " + customerName + "\\n" +
-                    "Email: " + booking.getCustomer().getEmail() + "\\n" +
-                    "Phone: " + booking.getCustomer().getPhone() + "\\n\\n" +
-                    (booking.getNotes() != null ? "Notes: " + booking.getNotes() : ""),
+                    descriptionBusiness,
                     booking.getStartTime(),
                     booking.getEndTime(),
-                    "Online Session",
+                    meetingLinkBusiness != null && !meetingLinkBusiness.isEmpty() ? meetingLinkBusiness : "Online Session",
                     businessEmail,
                     tenant.getName(),
                     booking.getCustomer().getEmail(),
@@ -226,7 +244,8 @@ public class EmailService {
      */
     private String buildCustomerEmailBody(String customerName, String sessionName,
                                          String formattedDateTime, int durationMinutes,
-                                         Tenant tenant, LocalDateTime startTime, LocalDateTime endTime) {
+                                         Tenant tenant, LocalDateTime startTime, LocalDateTime endTime,
+                                         String meetingLink, String meetingPassword) {
         String googleCalUrl = generateGoogleCalendarUrl(
             sessionName + " with " + tenant.getName(),
             "Your session: " + sessionName,
@@ -240,6 +259,21 @@ public class EmailService {
             startTime,
             endTime
         );
+
+        // Meeting link section
+        String meetingSection = "";
+        if (meetingLink != null && !meetingLink.isEmpty()) {
+            String passwordSection = "";
+            if (meetingPassword != null && !meetingPassword.isEmpty()) {
+                passwordSection = "<p style=\"margin: 10px 0; color: #1f2937;\"><strong>Password:</strong> " + meetingPassword + "</p>";
+            }
+            meetingSection = "<div style=\"background: #dbeafe; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 4px; text-align: center;\">" +
+                            "    <p style=\"font-weight: 700; color: #1e40af; font-size: 16px; margin-bottom: 15px;\">📹 Join Virtual Meeting</p>" +
+                            "    <a href=\"" + meetingLink + "\" style=\"display: inline-block; background: #4285f4; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);\">Join Google Meet</a>" +
+                            passwordSection +
+                            "    <p style=\"font-size: 13px; color: #6b7280; margin-top: 10px;\">Click the button above when it's time for your session</p>" +
+                            "</div>";
+        }
         return String.format(
                 "<!DOCTYPE html>" +
                 "<html>" +
@@ -291,6 +325,8 @@ public class EmailService {
                 "                </div>" +
                 "            </div>" +
                 "" +
+                "            %s" +
+                "" +
                 "            <div class=\"calendar-buttons\">" +
                 "                <p style=\"font-weight: 600; color: #1f2937; margin-bottom: 15px;\">Add to Your Calendar</p>" +
                 "                <a href=\"%s\" class=\"cal-btn cal-btn-google\">+ Google Calendar</a>" +
@@ -314,7 +350,7 @@ public class EmailService {
                 "</body>" +
                 "</html>",
                 customerName, sessionName, formattedDateTime, durationMinutes,
-                tenant.getName(), googleCalUrl, outlookCalUrl, tenant.getName());
+                tenant.getName(), meetingSection, googleCalUrl, outlookCalUrl, tenant.getName());
     }
 
     /**
@@ -323,10 +359,26 @@ public class EmailService {
     private String buildBusinessEmailBody(String customerName, String customerEmail,
                                          String customerPhone, String sessionName,
                                          String formattedDateTime, int durationMinutes,
-                                         String notes, LocalDateTime startTime, LocalDateTime endTime) {
+                                         String notes, LocalDateTime startTime, LocalDateTime endTime,
+                                         String meetingLink, String meetingPassword) {
         String notesSection = notes != null && !notes.isEmpty()
                 ? "<div class=\"notes\"><strong>Customer Notes:</strong><br>" + notes + "</div>"
                 : "";
+
+        // Meeting link section for business
+        String meetingSection = "";
+        if (meetingLink != null && !meetingLink.isEmpty()) {
+            String passwordSection = "";
+            if (meetingPassword != null && !meetingPassword.isEmpty()) {
+                passwordSection = "<p style=\"margin: 10px 0; color: #1f2937;\"><strong>Password:</strong> " + meetingPassword + "</p>";
+            }
+            meetingSection = "<div style=\"background: #dbeafe; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 4px; text-align: center;\">" +
+                            "    <p style=\"font-weight: 700; color: #1e40af; font-size: 16px; margin-bottom: 15px;\">📹 Virtual Meeting Link</p>" +
+                            "    <a href=\"" + meetingLink + "\" style=\"display: inline-block; background: #4285f4; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);\">Start Google Meet</a>" +
+                            passwordSection +
+                            "    <p style=\"font-size: 13px; color: #6b7280; margin-top: 10px;\">As the host, use this link to start the meeting</p>" +
+                            "</div>";
+        }
 
         String googleCalUrl = generateGoogleCalendarUrl(
             sessionName + " - " + customerName,
@@ -402,6 +454,8 @@ public class EmailService {
                 "" +
                 "            %s" +
                 "" +
+                "            %s" +
+                "" +
                 "            <div class=\"calendar-buttons\">" +
                 "                <p style=\"font-weight: 600; color: #1f2937; margin-bottom: 15px;\">Add to Your Calendar</p>" +
                 "                <a href=\"%s\" class=\"cal-btn cal-btn-google\">+ Google Calendar</a>" +
@@ -421,7 +475,7 @@ public class EmailService {
                 customerName, customerEmail, customerEmail,
                 customerPhone != null ? customerPhone : "Not provided",
                 sessionName, formattedDateTime, durationMinutes,
-                notesSection, googleCalUrl, outlookCalUrl
+                notesSection, meetingSection, googleCalUrl, outlookCalUrl
         );
     }
 }
