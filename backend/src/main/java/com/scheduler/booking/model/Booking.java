@@ -32,11 +32,11 @@ public class Booking {
     private UUID sessionTypeId;
 
     // Transient fields for JSON serialization
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id", insertable = false, updatable = false)
     private Customer customer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "session_type_id", insertable = false, updatable = false)
     private SessionType sessionType;
 

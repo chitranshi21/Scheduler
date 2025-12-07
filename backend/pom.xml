@@ -79,6 +79,20 @@
             <artifactId>liquibase-core</artifactId>
         </dependency>
 
+        <!-- Mailgun for email sending -->
+        <dependency>
+            <groupId>com.mailgun</groupId>
+            <artifactId>mailgun-java</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+
+        <!-- iCal4j for ICS calendar file generation -->
+        <dependency>
+            <groupId>org.mnode.ical4j</groupId>
+            <artifactId>ical4j</artifactId>
+            <version>3.2.14</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

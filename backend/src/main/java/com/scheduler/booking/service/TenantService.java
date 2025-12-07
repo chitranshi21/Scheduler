@@ -108,4 +108,15 @@ public class TenantService {
         tenant.setStatus("DELETED");
         tenantRepository.save(tenant);
     }
+
+    /**
+     * Get business user email for a tenant (for notifications)
+     */
+    public String getBusinessEmailForTenant(UUID tenantId) {
+        return businessUserRepository.findByTenantId(tenantId).stream()
+                .filter(BusinessUser::isActive)
+                .findFirst()
+                .map(BusinessUser::getEmail)
+                .orElseThrow(() -> new RuntimeException("No active business user found for tenant"));
+    }
 }
