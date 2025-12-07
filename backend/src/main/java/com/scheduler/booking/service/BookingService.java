@@ -25,6 +25,8 @@ public class BookingService {
     private final SessionTypeRepository sessionTypeRepository;
     private final CustomerRepository customerRepository;
     private final BlockedSlotRepository blockedSlotRepository;
+    private final TenantService tenantService;
+    private final EmailService emailService;
 
     public List<Booking> getBookingsByTenant(UUID tenantId) {
         return bookingRepository.findByTenantId(tenantId);
@@ -93,7 +95,32 @@ public class BookingService {
         booking.setCustomerTimezone(request.getCustomerTimezone());
         booking.setStatus("CONFIRMED");
 
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Reload booking with full relationships for email
+        Booking fullBooking = bookingRepository.findByIdWithDetails(savedBooking.getId())
+                .orElseThrow(() -> new RuntimeException("Booking not found after save"));
+
+        // Manually set relationships to ensure they're loaded for email templates
+        // This is necessary because JPA lazy/eager loading can be unreliable
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        fullBooking.setCustomer(customer);
+        fullBooking.setSessionType(sessionType);
+
+        // Send confirmation emails asynchronously
+        try {
+            var tenant = tenantService.getTenantById(tenantId);
+            var businessUser = tenantService.getBusinessEmailForTenant(tenantId);
+
+            emailService.sendCustomerBookingConfirmation(fullBooking, tenant);
+            emailService.sendBusinessBookingNotification(fullBooking, tenant, businessUser);
+        } catch (Exception e) {
+            // Log error but don't fail the booking
+            System.err.println("Failed to send booking confirmation emails: " + e.getMessage());
+        }
+
+        return savedBooking;
     }
 
     @Transactional
