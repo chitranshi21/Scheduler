@@ -42,6 +42,8 @@ public class SessionTypeService {
         sessionType.setCategory(request.getCategory());
         sessionType.setColor(request.getColor());
         sessionType.setCancellationPolicy(request.getCancellationPolicy());
+        sessionType.setMeetingLink(request.getMeetingLink());
+        sessionType.setMeetingPassword(request.getMeetingPassword());
         sessionType.setActive(true);
 
         return sessionTypeRepository.save(sessionType);
@@ -59,6 +61,8 @@ public class SessionTypeService {
         sessionType.setCategory(request.getCategory());
         sessionType.setColor(request.getColor());
         sessionType.setCancellationPolicy(request.getCancellationPolicy());
+        sessionType.setMeetingLink(request.getMeetingLink());
+        sessionType.setMeetingPassword(request.getMeetingPassword());
 
         return sessionTypeRepository.save(sessionType);
     }

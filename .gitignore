@@ -42,6 +42,7 @@ thumbs.db
 .svn
 .CVS
 node_modules/
+.vscode/
 jscoverage_lib/
 src/main/webapp/WEB-INF/ftl/rsrc/
 src/main/webapp/rsrc/dist/

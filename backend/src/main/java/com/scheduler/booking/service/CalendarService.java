@@ -98,6 +98,17 @@ public class CalendarService {
             // Add timestamp
             event.getProperties().add(new DtStamp(new DateTime()));
 
+            // Add URL for virtual meeting link (if location is a URL)
+            if (location != null && !location.isEmpty() &&
+                    (location.startsWith("http://") || location.startsWith("https://"))) {
+                try {
+                    event.getProperties().add(new Url(new URI(location)));
+                    log.debug("Added URL property to calendar event: {}", location);
+                } catch (Exception e) {
+                    log.warn("Failed to add URL property: {}", e.getMessage());
+                }
+            }
+
             // Add event to calendar
             calendar.getComponents().add(event);
 
