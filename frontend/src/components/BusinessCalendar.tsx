@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../styles/BusinessCalendar.css";
+import { businessAPI } from "../services/api";
+import type { BusinessHours as BusinessHoursType } from "../types";
 
 interface Booking {
   id: string;
@@ -27,7 +29,7 @@ interface BusinessCalendarProps {
   bookings: Booking[];
   blockedSlots: BlockedSlot[];
   onBlockSlot: (date: Date, startTime: string, endTime: string) => void;
-  onUnblockSlot: (slotId: string) => void;
+  onUnblockSlot?: (slotId: string) => void;
 }
 
 export default function BusinessCalendar({
@@ -53,6 +55,21 @@ export default function BusinessCalendar({
     dateStr: string;
     time: string;
   } | null>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHoursType[]>([]);
+
+  // Load business hours
+  useEffect(() => {
+    const loadBusinessHours = async () => {
+      try {
+        const response = await businessAPI.getBusinessHours();
+        setBusinessHours(response.data);
+      } catch (error) {
+        console.error("Failed to load business hours:", error);
+      }
+    };
+
+    loadBusinessHours();
+  }, []);
 
   const monthNames = [
     "January",
@@ -203,6 +220,31 @@ export default function BusinessCalendar({
     }
   };
 
+  const isWithinBusinessHours = (date: Date, time: string): boolean => {
+    const dayOfWeek = [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ][date.getDay()] as BusinessHoursType["dayOfWeek"];
+
+    const dayHours = businessHours.filter(
+      (h) => h.dayOfWeek === dayOfWeek && h.enabled
+    );
+
+    if (dayHours.length === 0) {
+      return false; // No business hours set for this day
+    }
+
+    // Check if time falls within any of the business hour ranges for this day
+    return dayHours.some((hour) => {
+      return time >= hour.startTime && time < hour.endTime;
+    });
+  };
+
   const handlePreviousWeek = () => {
     try {
       console.log("Previous week clicked, current date:", currentDate);
@@ -284,6 +326,10 @@ export default function BusinessCalendar({
           <span className="legend-dot available"></span>
           <span>Available</span>
         </div>
+        <div className="legend-item">
+          <span className="legend-dot outside-hours"></span>
+          <span>Outside Business Hours</span>
+        </div>
       </div>
 
       <div className="calendar-grid-wrapper">
@@ -317,6 +363,7 @@ export default function BusinessCalendar({
               {timeSlots.map((time, timeIndex) => {
                 const slotBookings = getBookingsForSlot(day, time);
                 const blocked = isSlotBlocked(day, time);
+                const withinBusinessHours = isWithinBusinessHours(day, time);
 
                 // Create a new Date object to check if slot is in the past (don't mutate day)
                 const slotDateTime = new Date(day);
@@ -333,9 +380,11 @@ export default function BusinessCalendar({
                     key={timeIndex}
                     className={`time-slot ${blocked ? "blocked" : ""} ${
                       slotBookings.length > 0 ? "booked" : ""
-                    } ${isPast ? "past" : ""}`}
+                    } ${isPast ? "past" : ""} ${
+                      !withinBusinessHours ? "outside-hours" : ""
+                    }`}
                     onClick={() => {
-                      if (!isPast && !blocked && slotBookings.length === 0) {
+                      if (!isPast && !blocked && slotBookings.length === 0 && withinBusinessHours) {
                         // Store date as ISO string to avoid mutation issues
                         setSelectedSlot({
                           dateStr: day.toISOString().split("T")[0],

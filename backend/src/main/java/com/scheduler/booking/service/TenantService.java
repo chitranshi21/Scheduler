@@ -21,6 +21,7 @@ public class TenantService {
     private final TenantRepository tenantRepository;
     private final BusinessUserRepository businessUserRepository;
     private final ClerkUserService clerkUserService;
+    private final BusinessHoursService businessHoursService;
 
     public List<Tenant> getAllTenants() {
         return tenantRepository.findAll();
@@ -47,10 +48,15 @@ public class TenantService {
         tenant.setDescription(request.getDescription());
         tenant.setBrandColors(request.getBrandColors());
         tenant.setSubscriptionTier(request.getSubscriptionTier() != null ? request.getSubscriptionTier() : "BASIC");
+        tenant.setTimezone(request.getTimezone() != null ? request.getTimezone() : "UTC");
         tenant.setStatus("ACTIVE");
 
         tenant = tenantRepository.save(tenant);
         log.info("Created tenant: {} with ID: {}", tenant.getName(), tenant.getId());
+
+        // Initialize default business hours (9 AM - 5 PM, Monday to Friday)
+        businessHoursService.initializeDefaultBusinessHours(tenant.getId());
+        log.info("Initialized default business hours for tenant: {}", tenant.getId());
 
         // Create business owner user in Clerk if details provided
         if (request.getOwnerEmail() != null && request.getOwnerPassword() != null) {
@@ -98,6 +104,9 @@ public class TenantService {
         tenant.setBrandColors(request.getBrandColors());
         if (request.getSubscriptionTier() != null) {
             tenant.setSubscriptionTier(request.getSubscriptionTier());
+        }
+        if (request.getTimezone() != null) {
+            tenant.setTimezone(request.getTimezone());
         }
         return tenantRepository.save(tenant);
     }

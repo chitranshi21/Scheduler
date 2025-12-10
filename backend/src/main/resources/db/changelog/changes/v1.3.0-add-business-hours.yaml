@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1.3.0-create-business-hours-table
+      author: scheduler
+      changes:
+        - createTable:
+            tableName: business_hours
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: day_of_week
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+                  remarks: "Day of week: MONDAY, TUESDAY, etc."
+              - column:
+                  name: start_time
+                  type: time
+                  constraints:
+                    nullable: false
+                  remarks: "Start time for this availability block"
+              - column:
+                  name: end_time
+                  type: time
+                  constraints:
+                    nullable: false
+                  remarks: "End time for this availability block"
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+                  remarks: "Whether this time slot is enabled"
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            indexName: idx_business_hours_tenant_id
+            tableName: business_hours
+            columns:
+              - column:
+                  name: tenant_id
+        - createIndex:
+            indexName: idx_business_hours_tenant_day
+            tableName: business_hours
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: day_of_week
+      rollback:
+        - dropTable:
+            tableName: business_hours

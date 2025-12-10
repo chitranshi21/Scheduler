@@ -2,6 +2,8 @@ package com.scheduler.booking.controller;
 
 import com.scheduler.booking.dto.BlockedSlotRequest;
 import com.scheduler.booking.dto.BookingRequest;
+import com.scheduler.booking.dto.BusinessHoursRequest;
+import com.scheduler.booking.dto.BusinessHoursResponse;
 import com.scheduler.booking.dto.SessionTypeRequest;
 import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
@@ -35,6 +37,7 @@ public class BusinessController {
     private final BusinessUserRepository businessUserRepository;
     private final TenantRepository tenantRepository;
     private final BlockedSlotRepository blockedSlotRepository;
+    private final com.scheduler.booking.service.BusinessHoursService businessHoursService;
 
     private UUID getTenantIdFromAuth(Authentication authentication) {
         String clerkUserId = authentication.getName();
@@ -84,6 +87,23 @@ public class BusinessController {
         UUID tenantId = getTenantIdFromAuth(authentication);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        return ResponseEntity.ok(tenant);
+    }
+
+    @PutMapping("/tenant/timezone")
+    public ResponseEntity<Tenant> updateTenantTimezone(
+            Authentication authentication,
+            @RequestBody java.util.Map<String, String> request) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+
+        String timezone = request.get("timezone");
+        if (timezone != null && !timezone.isEmpty()) {
+            tenant.setTimezone(timezone);
+            tenant = tenantRepository.save(tenant);
+        }
+
         return ResponseEntity.ok(tenant);
     }
 
@@ -215,5 +235,46 @@ public class BusinessController {
 
         blockedSlotRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Business Hours endpoints
+    @GetMapping("/business-hours")
+    public ResponseEntity<List<BusinessHoursResponse>> getBusinessHours(Authentication authentication) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        return ResponseEntity.ok(businessHoursService.getBusinessHours(tenantId));
+    }
+
+    @PostMapping("/business-hours")
+    public ResponseEntity<BusinessHoursResponse> createBusinessHours(
+            Authentication authentication,
+            @Valid @RequestBody BusinessHoursRequest request) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        return ResponseEntity.ok(businessHoursService.createBusinessHours(tenantId, request));
+    }
+
+    @PutMapping("/business-hours/{id}")
+    public ResponseEntity<BusinessHoursResponse> updateBusinessHours(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody BusinessHoursRequest request) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        return ResponseEntity.ok(businessHoursService.updateBusinessHours(id, tenantId, request));
+    }
+
+    @DeleteMapping("/business-hours/{id}")
+    public ResponseEntity<Void> deleteBusinessHours(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        businessHoursService.deleteBusinessHours(id, tenantId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/business-hours/batch")
+    public ResponseEntity<List<BusinessHoursResponse>> updateAllBusinessHours(
+            Authentication authentication,
+            @Valid @RequestBody List<BusinessHoursRequest> requests) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        return ResponseEntity.ok(businessHoursService.updateAllBusinessHours(tenantId, requests));
     }
 }

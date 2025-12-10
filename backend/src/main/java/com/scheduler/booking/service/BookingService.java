@@ -97,28 +97,8 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Reload booking with full relationships for email
-        Booking fullBooking = bookingRepository.findByIdWithDetails(savedBooking.getId())
-                .orElseThrow(() -> new RuntimeException("Booking not found after save"));
-
-        // Manually set relationships to ensure they're loaded for email templates
-        // This is necessary because JPA lazy/eager loading can be unreliable
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
-        fullBooking.setCustomer(customer);
-        fullBooking.setSessionType(sessionType);
-
-        // Send confirmation emails asynchronously
-        try {
-            var tenant = tenantService.getTenantById(tenantId);
-            var businessUser = tenantService.getBusinessEmailForTenant(tenantId);
-
-            emailService.sendCustomerBookingConfirmation(fullBooking, tenant);
-            emailService.sendBusinessBookingNotification(fullBooking, tenant, businessUser);
-        } catch (Exception e) {
-            // Log error but don't fail the booking
-            System.err.println("Failed to send booking confirmation emails: " + e.getMessage());
-        }
+        // NOTE: Emails are NOT sent here - they will be sent after successful payment
+        // via the Stripe webhook handler (see StripeService.handlePaymentSuccess)
 
         return savedBooking;
     }
@@ -130,5 +110,41 @@ public class BookingService {
         booking.setCancellationReason(reason);
         booking.setCancelledAt(LocalDateTime.now());
         bookingRepository.save(booking);
+    }
+
+    /**
+     * Confirm booking after successful payment and send confirmation emails
+     * This is called from the Stripe webhook handler
+     */
+    @Transactional
+    public void confirmBookingAfterPayment(UUID bookingId) {
+        // Reload booking with full relationships for email
+        Booking fullBooking = bookingRepository.findByIdWithDetails(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found: " + bookingId));
+
+        // Update status to CONFIRMED
+        fullBooking.setStatus("CONFIRMED");
+        bookingRepository.save(fullBooking);
+
+        // Manually set relationships to ensure they're loaded for email templates
+        Customer customer = customerRepository.findById(fullBooking.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        SessionType sessionType = sessionTypeRepository.findById(fullBooking.getSessionTypeId())
+                .orElseThrow(() -> new RuntimeException("Session type not found"));
+
+        fullBooking.setCustomer(customer);
+        fullBooking.setSessionType(sessionType);
+
+        // Send confirmation emails asynchronously
+        try {
+            var tenant = tenantService.getTenantById(fullBooking.getTenantId());
+            var businessUser = tenantService.getBusinessEmailForTenant(fullBooking.getTenantId());
+
+            emailService.sendCustomerBookingConfirmation(fullBooking, tenant);
+            emailService.sendBusinessBookingNotification(fullBooking, tenant, businessUser);
+        } catch (Exception e) {
+            // Log error but don't fail the booking confirmation
+            System.err.println("Failed to send booking confirmation emails: " + e.getMessage());
+        }
     }
 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Tenant, SessionType, Booking } from '../types';
+import type { Tenant, SessionType, Booking, BusinessHours, BlockedSlot } from '../types';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -61,6 +61,8 @@ export const adminAPI = {
 // Business API
 export const businessAPI = {
   getTenant: () => api.get<Tenant>('/business/tenant'),
+  updateTenantTimezone: (timezone: string) =>
+    api.put<Tenant>('/business/tenant/timezone', { timezone }),
   getSessionTypes: () => api.get<SessionType[]>('/business/sessions'),
   createSessionType: (data: Partial<SessionType>) =>
     api.post<SessionType>('/business/sessions', data),
@@ -69,10 +71,18 @@ export const businessAPI = {
   deleteSessionType: (id: string) => api.delete(`/business/sessions/${id}`),
   getBookings: () => api.get<Booking[]>('/business/bookings'),
   cancelBooking: (id: string) => api.delete(`/business/bookings/${id}`),
-  getBlockedSlots: () => api.get<any[]>('/business/blocked-slots'),
+  getBlockedSlots: () => api.get<BlockedSlot[]>('/business/blocked-slots'),
   createBlockedSlot: (data: { startTime: number; endTime: number; reason?: string }) =>
-    api.post<any>('/business/blocked-slots', data),
+    api.post<BlockedSlot>('/business/blocked-slots', data),
   deleteBlockedSlot: (id: string) => api.delete(`/business/blocked-slots/${id}`),
+  getBusinessHours: () => api.get<BusinessHours[]>('/business/business-hours'),
+  createBusinessHours: (data: Partial<BusinessHours>) =>
+    api.post<BusinessHours>('/business/business-hours', data),
+  updateBusinessHours: (id: string, data: Partial<BusinessHours>) =>
+    api.put<BusinessHours>(`/business/business-hours/${id}`, data),
+  deleteBusinessHours: (id: string) => api.delete(`/business/business-hours/${id}`),
+  updateAllBusinessHours: (data: Partial<BusinessHours>[]) =>
+    api.put<BusinessHours[]>('/business/business-hours/batch', data),
 };
 
 // Customer API
@@ -82,6 +92,10 @@ export const customerAPI = {
     api.get<SessionType[]>(`/customer/tenants/${tenantId}/sessions`),
   createBooking: (tenantId: string, data: any) =>
     api.post<Booking>(`/customer/tenants/${tenantId}/bookings`, data),
+  getBusinessHours: (tenantId: string) =>
+    api.get<BusinessHours[]>(`/customer/tenants/${tenantId}/business-hours`),
+  getBlockedSlots: (tenantId: string) =>
+    api.get<BlockedSlot[]>(`/customer/tenants/${tenantId}/blocked-slots`),
 };
 
 // Stripe API

@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BusinessDashboard from './pages/BusinessDashboard';
 import CustomerPortal from './pages/CustomerPortal';
+import BookingSuccess from './pages/BookingSuccess';
+import BookingCancelled from './pages/BookingCancelled';
 import './App.css';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) => {
@@ -59,6 +61,8 @@ function AppRoutes() {
         }
       />
       <Route path="/book/:slug" element={<CustomerPortal />} />
+      <Route path="/booking-success" element={<BookingSuccess />} />
+      <Route path="/booking-cancelled" element={<BookingCancelled />} />
       <Route
         path="/"
         element={

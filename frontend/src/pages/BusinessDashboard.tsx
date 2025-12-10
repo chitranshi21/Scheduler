@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { businessAPI } from '../services/api';
-import type { SessionType, Booking, Tenant } from '../types';
+import type { SessionType, Booking, Tenant, BusinessHours } from '../types';
 import WeeklySchedule from '../components/WeeklySchedule';
 import BusinessCalendar from '../components/BusinessCalendar';
+import { getUserTimezone, getTimezoneAbbreviation } from '../utils/timezone';
 
 export default function BusinessDashboard() {
   const { user } = useUser();
@@ -14,6 +15,7 @@ export default function BusinessDashboard() {
   const [activeTab, setActiveTab] = useState<'sessions' | 'calendar' | 'bookings'>('sessions');
   const [showModal, setShowModal] = useState(false);
   const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -37,11 +39,12 @@ export default function BusinessDashboard() {
       setLoading(true);
       setError(null);
       console.log('Loading business dashboard data...');
-      const [tenantRes, sessionsRes, bookingsRes, blockedSlotsRes] = await Promise.all([
+      const [tenantRes, sessionsRes, bookingsRes, blockedSlotsRes, businessHoursRes] = await Promise.all([
         businessAPI.getTenant(),
         businessAPI.getSessionTypes(),
         businessAPI.getBookings(),
-        businessAPI.getBlockedSlots()
+        businessAPI.getBlockedSlots(),
+        businessAPI.getBusinessHours()
       ]);
       console.log('Data loaded:', {
         tenant: tenantRes.data,
@@ -50,10 +53,29 @@ export default function BusinessDashboard() {
         blockedSlotsCount: blockedSlotsRes.data.length,
         bookingsSample: bookingsRes.data[0] // Log first booking to see structure
       });
-      setTenant(tenantRes.data);
+
+      const tenantData = tenantRes.data;
+      setTenant(tenantData);
       setSessions(Array.isArray(sessionsRes.data) ? sessionsRes.data : []);
       setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
       setBlockedSlots(Array.isArray(blockedSlotsRes.data) ? blockedSlotsRes.data : []);
+      setBusinessHours(Array.isArray(businessHoursRes.data) ? businessHoursRes.data : []);
+
+      // Auto-detect and update timezone if it's still UTC (default)
+      if (tenantData.timezone === 'UTC') {
+        const detectedTimezone = getUserTimezone();
+        console.log('Detected timezone:', detectedTimezone);
+
+        try {
+          // Update tenant timezone to detected timezone
+          await businessAPI.updateTenantTimezone(detectedTimezone);
+          setTenant({ ...tenantData, timezone: detectedTimezone });
+          console.log('✅ Timezone auto-updated to:', detectedTimezone);
+        } catch (error) {
+          console.error('Failed to update timezone:', error);
+        }
+      }
+
       setLoading(false);
     } catch (error: any) {
       console.error('Failed to load data', error);
@@ -104,10 +126,40 @@ export default function BusinessDashboard() {
     }
   };
 
-  const handleSaveSchedule = (schedule: any) => {
+  const handleSaveSchedule = async (schedule: any) => {
     console.log('Saving schedule:', schedule);
-    // TODO: Implement API call to save schedule
-    alert('Schedule saved successfully!');
+    try {
+      // Convert schedule object to BusinessHours array
+      const businessHoursData: Partial<BusinessHours>[] = [];
+      const dayMap: Record<string, BusinessHours['dayOfWeek']> = {
+        'Monday': 'MONDAY',
+        'Tuesday': 'TUESDAY',
+        'Wednesday': 'WEDNESDAY',
+        'Thursday': 'THURSDAY',
+        'Friday': 'FRIDAY',
+        'Saturday': 'SATURDAY',
+        'Sunday': 'SUNDAY'
+      };
+
+      Object.entries(schedule).forEach(([day, data]: [string, any]) => {
+        if (data.enabled) {
+          businessHoursData.push({
+            dayOfWeek: dayMap[day],
+            startTime: data.startTime,
+            endTime: data.endTime,
+            enabled: true
+          });
+        }
+      });
+
+      await businessAPI.updateAllBusinessHours(businessHoursData);
+      setBusinessHours(businessHoursData as BusinessHours[]);
+      alert('Schedule saved successfully!');
+    } catch (error: any) {
+      console.error('Failed to save schedule:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save schedule';
+      alert('Error: ' + errorMessage);
+    }
   };
 
   const formatDateTime = (timestamp: number | undefined | null): string => {
@@ -181,6 +233,23 @@ export default function BusinessDashboard() {
       </div>
 
       <div className="container">
+        {tenant && (
+          <div style={{
+            padding: '12px 16px',
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontSize: '14px',
+            color: '#166534',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🌍 <strong>Business Timezone:</strong> {tenant.timezone} ({getTimezoneAbbreviation(tenant.timezone)})
+          </div>
+        )}
+
         {loading && (
           <div style={{ padding: '40px', textAlign: 'center' }}>
             <p>Loading dashboard...</p>
@@ -310,7 +379,7 @@ export default function BusinessDashboard() {
 
               <div style={{ marginBottom: '32px', background: 'white', padding: '20px', borderRadius: '8px' }}>
                 <h4 style={{ marginBottom: '16px' }}>Weekly Schedule</h4>
-                <WeeklySchedule onSave={handleSaveSchedule} />
+                <WeeklySchedule onSave={handleSaveSchedule} initialHours={businessHours} />
               </div>
 
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px' }}>

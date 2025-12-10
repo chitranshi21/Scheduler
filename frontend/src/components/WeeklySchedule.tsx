@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../styles/WeeklySchedule.css';
+import type { BusinessHours } from '../types';
 
 interface DaySchedule {
   enabled: boolean;
@@ -9,6 +10,7 @@ interface DaySchedule {
 
 interface WeeklyScheduleProps {
   onSave: (schedule: Record<string, DaySchedule>) => void;
+  initialHours?: BusinessHours[];
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -19,8 +21,8 @@ const DEFAULT_SCHEDULE: DaySchedule = {
   endTime: '17:00'
 };
 
-export default function WeeklySchedule({ onSave }: WeeklyScheduleProps) {
-  console.log('WeeklySchedule component rendering...');
+export default function WeeklySchedule({ onSave, initialHours }: WeeklyScheduleProps) {
+  console.log('WeeklySchedule component rendering...', { initialHours });
   const [schedule, setSchedule] = useState<Record<string, DaySchedule>>({
     Monday: { ...DEFAULT_SCHEDULE },
     Tuesday: { ...DEFAULT_SCHEDULE },
@@ -30,6 +32,44 @@ export default function WeeklySchedule({ onSave }: WeeklyScheduleProps) {
     Saturday: { enabled: false, startTime: '09:00', endTime: '17:00' },
     Sunday: { enabled: false, startTime: '09:00', endTime: '17:00' }
   });
+
+  // Load initial hours from API
+  useEffect(() => {
+    if (initialHours && initialHours.length > 0) {
+      const newSchedule: Record<string, DaySchedule> = {
+        Monday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Tuesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Wednesday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Thursday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Friday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Saturday: { enabled: false, startTime: '09:00', endTime: '17:00' },
+        Sunday: { enabled: false, startTime: '09:00', endTime: '17:00' }
+      };
+
+      const dayMap: Record<BusinessHours['dayOfWeek'], string> = {
+        'MONDAY': 'Monday',
+        'TUESDAY': 'Tuesday',
+        'WEDNESDAY': 'Wednesday',
+        'THURSDAY': 'Thursday',
+        'FRIDAY': 'Friday',
+        'SATURDAY': 'Saturday',
+        'SUNDAY': 'Sunday'
+      };
+
+      initialHours.forEach(hour => {
+        const dayName = dayMap[hour.dayOfWeek];
+        if (dayName) {
+          newSchedule[dayName] = {
+            enabled: hour.enabled,
+            startTime: hour.startTime,
+            endTime: hour.endTime
+          };
+        }
+      });
+
+      setSchedule(newSchedule);
+    }
+  }, [initialHours]);
 
   const handleToggleDay = (day: string) => {
     setSchedule({

@@ -23,6 +23,7 @@ public class TenantRequest {
     private String description;
     private Map<String, String> brandColors;
     private String subscriptionTier;
+    private String timezone; // IANA timezone identifier (e.g., "Europe/Amsterdam", "America/New_York")
 
     // Business owner details (for creating Clerk user)
     private String ownerFirstName;

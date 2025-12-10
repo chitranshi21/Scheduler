@@ -23,6 +23,7 @@ export interface Tenant {
   description?: string;
   status: string;
   subscriptionTier: string;
+  timezone: string; // IANA timezone identifier (e.g., "Europe/Amsterdam")
   createdAt: string;
 }
 
@@ -62,4 +63,23 @@ export interface Booking {
   notes?: string;
   sessionType?: SessionType;
   customer?: Customer;
+}
+
+export interface BusinessHours {
+  id: string;
+  dayOfWeek: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+  startTime: string; // Format: "HH:mm"
+  endTime: string;   // Format: "HH:mm"
+  enabled: boolean;
+}
+
+export interface BlockedSlot {
+  id: string;
+  tenantId: string;
+  startTime: number; // Epoch timestamp in milliseconds (LocalDateTime from backend)
+  endTime: number;   // Epoch timestamp in milliseconds (LocalDateTime from backend)
+  reason?: string;
+  createdBy?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { customerAPI, stripeAPI } from '../services/api';
 import type { Tenant, SessionType } from '../types';
 import BookingCalendar from '../components/BookingCalendar';
+import { getTimezoneDifferenceMessage } from '../utils/timezone';
 
 export default function CustomerPortal() {
   const { slug } = useParams<{ slug: string }>();
@@ -107,7 +108,20 @@ export default function CustomerPortal() {
       </div>
 
       <div className="container" style={{ paddingTop: '32px' }}>
-        <h2 style={{ marginBottom: '24px' }}>Available Sessions</h2>
+        <h2 style={{ marginBottom: '16px' }}>Available Sessions</h2>
+        {tenant && getTimezoneDifferenceMessage(tenant.timezone) && (
+          <div style={{
+            padding: '12px 16px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            fontSize: '14px',
+            color: '#1e40af'
+          }}>
+            ℹ️ {getTimezoneDifferenceMessage(tenant.timezone)}
+          </div>
+        )}
         <div className="grid">
           {sessions.map((session) => (
             <div key={session.id} className="card" style={{ margin: 0 }}>

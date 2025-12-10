@@ -120,12 +120,25 @@ public class StripeController {
             // Handle different event types
             switch (event.getType()) {
                 case "checkout.session.completed":
+                    // Payment succeeded - confirm booking and send emails
                     stripeService.handlePaymentSuccess(event);
                     break;
-                case "checkout.session.expired":
+
                 case "payment_intent.payment_failed":
+                    // Payment was attempted but failed (declined card, etc)
                     stripeService.handlePaymentFailed(event);
                     break;
+
+                case "checkout.session.expired":
+                    // User abandoned checkout or session expired (24 hours)
+                    stripeService.handlePaymentCancelled(event);
+                    break;
+
+                case "payment_intent.canceled":
+                    // Payment was cancelled
+                    stripeService.handlePaymentCancelled(event);
+                    break;
+
                 default:
                     log.info("Unhandled event type: {}", event.getType());
             }

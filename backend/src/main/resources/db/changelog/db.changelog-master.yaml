@@ -5,3 +5,7 @@ databaseChangeLog:
       file: db/changelog/changes/v1.1.0-add-meeting-link-to-session-types.yaml
   - include:
       file: db/changelog/changes/v1.2.0-add-stripe-checkout-session.yaml
+  - include:
+      file: db/changelog/changes/v1.3.0-add-business-hours.yaml
+  - include:
+      file: db/changelog/changes/v1.4.0-add-timezone-to-tenants.yaml

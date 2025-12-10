@@ -52,6 +52,9 @@ public class Tenant {
 
     private LocalDateTime subscriptionExpiresAt;
 
+    @Column(nullable = false)
+    private String timezone = "UTC"; // IANA timezone identifier (e.g., "Europe/Amsterdam", "America/New_York")
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

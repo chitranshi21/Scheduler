@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1.4.0-add-timezone-column
+      author: scheduler
+      changes:
+        - addColumn:
+            tableName: tenants
+            columns:
+              - column:
+                  name: timezone
+                  type: varchar(50)
+                  defaultValue: "UTC"
+                  constraints:
+                    nullable: false
+                  remarks: "IANA timezone identifier (e.g., Europe/Amsterdam, America/New_York)"
+      rollback:
+        - dropColumn:
+            tableName: tenants
+            columnName: timezone

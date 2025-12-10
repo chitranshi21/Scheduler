@@ -1,6 +1,8 @@
 package com.scheduler.booking.controller;
 
 import com.scheduler.booking.dto.BookingRequest;
+import com.scheduler.booking.dto.BusinessHoursResponse;
+import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
 import com.scheduler.booking.model.SessionType;
 import com.scheduler.booking.model.Tenant;
@@ -24,6 +26,8 @@ public class CustomerController {
     private final SessionTypeService sessionTypeService;
     private final BookingService bookingService;
     private final TenantRepository tenantRepository;
+    private final com.scheduler.booking.service.BusinessHoursService businessHoursService;
+    private final com.scheduler.booking.repository.BlockedSlotRepository blockedSlotRepository;
 
     @GetMapping("/tenants/{slug}")
     public ResponseEntity<Tenant> getTenantBySlug(@PathVariable String slug) {
@@ -47,5 +51,15 @@ public class CustomerController {
     @GetMapping("/bookings/{id}")
     public ResponseEntity<Booking> getBooking(@PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.getBookingById(id));
+    }
+
+    @GetMapping("/tenants/{tenantId}/business-hours")
+    public ResponseEntity<List<BusinessHoursResponse>> getBusinessHours(@PathVariable UUID tenantId) {
+        return ResponseEntity.ok(businessHoursService.getBusinessHours(tenantId));
+    }
+
+    @GetMapping("/tenants/{tenantId}/blocked-slots")
+    public ResponseEntity<List<BlockedSlot>> getBlockedSlots(@PathVariable UUID tenantId) {
+        return ResponseEntity.ok(blockedSlotRepository.findByTenantId(tenantId));
     }
 }
