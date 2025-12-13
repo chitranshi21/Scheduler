@@ -10,6 +10,7 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.param.checkout.SessionRetrieveParams;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +55,7 @@ public class StripeService {
     /**
      * Create Stripe Checkout Session for booking payment
      */
-    public Session createCheckoutSession(Booking booking, SessionType sessionType, String customerEmail)
+    public Session createCheckoutSession(Booking booking, SessionType sessionType, String customerEmail, String tenantSlug)
             throws StripeException {
 
         if (!stripeConfig.isEnabled()) {
@@ -67,11 +69,17 @@ public class StripeService {
         // Convert to cents (Stripe requires amount in smallest currency unit)
         long amountInCents = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
 
+        // Build redirect URLs with slug for proper navigation back to business page
+        String successUrl = frontendUrl + "/booking-success?session_id={CHECKOUT_SESSION_ID}&slug=" + 
+                           (tenantSlug != null ? tenantSlug : "");
+        String cancelUrl = frontendUrl + "/booking-cancelled?slug=" + 
+                          (tenantSlug != null ? tenantSlug : "");
+
         // Create Checkout Session
         SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/booking-success?session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(frontendUrl + "/booking-cancelled")
+                .setSuccessUrl(successUrl)
+                .setCancelUrl(cancelUrl)
                 .setCustomerEmail(customerEmail)
                 .addLineItem(
                         SessionCreateParams.LineItem.builder()
@@ -311,6 +319,88 @@ public class StripeService {
         } catch (Exception e) {
             log.error("❌ Error handling payment cancellation", e);
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sync payment status from Stripe for a booking
+     * This is useful when webhooks are not configured or not working
+     */
+    public void syncPaymentStatusFromStripe(UUID bookingId) {
+        if (!stripeConfig.isEnabled()) {
+            log.warn("Stripe is not enabled, cannot sync payment status");
+            return;
+        }
+
+        try {
+            // Find payment record
+            Payment payment = paymentRepository.findByBookingId(bookingId).orElse(null);
+            if (payment == null) {
+                log.warn("No payment record found for booking: {}", bookingId);
+                return;
+            }
+
+            String checkoutSessionId = payment.getStripeCheckoutSessionId();
+            if (checkoutSessionId == null || checkoutSessionId.isEmpty()) {
+                log.warn("No Stripe checkout session ID found for payment: {}", payment.getId());
+                return;
+            }
+
+            // Retrieve session from Stripe
+            Session session = Session.retrieve(checkoutSessionId);
+            log.info("Retrieved Stripe session {} for booking {}: payment_status={}, status={}", 
+                    checkoutSessionId, bookingId, session.getPaymentStatus(), session.getStatus());
+
+            // Update payment status based on Stripe session
+            String stripePaymentStatus = session.getPaymentStatus();
+            String stripeSessionStatus = session.getStatus();
+
+            Booking booking = bookingRepository.findById(bookingId).orElse(null);
+            if (booking == null) {
+                log.error("Booking not found: {}", bookingId);
+                return;
+            }
+
+            // Handle different payment statuses
+            if ("paid".equals(stripePaymentStatus) && "complete".equals(stripeSessionStatus)) {
+                // Payment is successful
+                if (!"COMPLETED".equals(payment.getStatus())) {
+                    payment.setStatus("COMPLETED");
+                    payment.setPaymentMethod("card");
+                    paymentRepository.save(payment);
+                    log.info("✅ Synced payment status to COMPLETED for booking: {}", bookingId);
+                }
+
+                // Update booking status if still pending
+                if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+                    bookingService.confirmBookingAfterPayment(bookingId);
+                    log.info("✅ Confirmed booking {} after payment sync", bookingId);
+                }
+            } else if ("unpaid".equals(stripePaymentStatus) && "expired".equals(stripeSessionStatus)) {
+                // Payment expired
+                payment.setStatus("CANCELLED");
+                payment.setFailureReason("Checkout session expired");
+                paymentRepository.save(payment);
+                
+                if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+                    booking.setStatus("CANCELLED");
+                    booking.setCancellationReason("Payment expired");
+                    bookingRepository.save(booking);
+                    log.info("⚠️ Synced booking {} to CANCELLED (payment expired)", bookingId);
+                }
+            } else if ("unpaid".equals(stripePaymentStatus)) {
+                // Payment not completed yet
+                if (!"PENDING".equals(payment.getStatus())) {
+                    payment.setStatus("PENDING");
+                    paymentRepository.save(payment);
+                    log.info("ℹ️ Synced payment status to PENDING for booking: {}", bookingId);
+                }
+            }
+
+        } catch (StripeException e) {
+            log.error("❌ Error syncing payment status from Stripe for booking {}: {}", bookingId, e.getMessage());
+        } catch (Exception e) {
+            log.error("❌ Error syncing payment status for booking {}: {}", bookingId, e.getMessage(), e);
         }
     }
 }

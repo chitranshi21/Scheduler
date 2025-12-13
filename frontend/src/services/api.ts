@@ -109,8 +109,11 @@ export const customerAPI = {
 
 // Stripe API
 export const stripeAPI = {
-  createCheckoutSession: (bookingId: string) =>
-    api.post<{ checkoutUrl: string; sessionId: string }>('/stripe/create-checkout-session', { bookingId }),
+  createCheckoutSession: (bookingId: string, slug?: string) =>
+    api.post<{ checkoutUrl: string; sessionId: string }>('/stripe/create-checkout-session', { 
+      bookingId,
+      slug: slug || ''
+    }),
   getConfig: () =>
     api.get<{ publishableKey: string }>('/stripe/config'),
 };

@@ -1,5 +1,6 @@
 package com.scheduler.booking.service;
 
+import com.scheduler.booking.config.StripeConfig;
 import com.scheduler.booking.dto.BookingRequest;
 import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
@@ -10,15 +11,18 @@ import com.scheduler.booking.repository.BookingRepository;
 import com.scheduler.booking.repository.CustomerRepository;
 import com.scheduler.booking.repository.SessionTypeRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookingService {
 
     private final BookingRepository bookingRepository;
@@ -27,6 +31,7 @@ public class BookingService {
     private final BlockedSlotRepository blockedSlotRepository;
     private final TenantService tenantService;
     private final EmailService emailService;
+    private final StripeConfig stripeConfig;
 
     public List<Booking> getBookingsByTenant(UUID tenantId) {
         return bookingRepository.findByTenantId(tenantId);
@@ -93,12 +98,63 @@ public class BookingService {
         booking.setParticipants(request.getParticipants());
         booking.setNotes(request.getNotes());
         booking.setCustomerTimezone(request.getCustomerTimezone());
-        booking.setStatus("PENDING_PAYMENT"); // Will be updated to CONFIRMED after successful payment
+        
+        // Determine booking status based on Stripe configuration and session price
+        boolean isStripeEnabled = stripeConfig.isEnabled();
+        boolean isFreeSession = sessionType.getPrice() == null || 
+                               sessionType.getPrice().compareTo(BigDecimal.ZERO) == 0;
+        
+        if (!isStripeEnabled || isFreeSession) {
+            // If Stripe is disabled or session is free, confirm immediately
+            booking.setStatus("CONFIRMED");
+        } else {
+            // If Stripe is enabled and session has a price, wait for payment
+            booking.setStatus("PENDING_PAYMENT");
+        }
 
         Booking savedBooking = bookingRepository.save(booking);
+        
+        log.info("Booking {} created with status: {} (Stripe enabled: {}, Free session: {})", 
+                savedBooking.getId(), savedBooking.getStatus(), isStripeEnabled, isFreeSession);
 
-        // NOTE: Emails are NOT sent here - they will be sent after successful payment
-        // via the Stripe webhook handler (see StripeService.handlePaymentSuccess)
+        // If booking is confirmed (Stripe disabled or free session), send emails immediately
+        if ("CONFIRMED".equals(savedBooking.getStatus())) {
+            log.info("Sending confirmation emails immediately for booking {} (Stripe disabled or free session)", 
+                    savedBooking.getId());
+            try {
+                // Load full booking with relationships for email
+                Booking fullBooking = bookingRepository.findByIdWithDetails(savedBooking.getId())
+                        .orElse(savedBooking);
+                
+                // Ensure relationships are loaded
+                if (fullBooking.getCustomer() == null) {
+                    Customer customer = customerRepository.findById(fullBooking.getCustomerId())
+                            .orElseThrow(() -> new RuntimeException("Customer not found"));
+                    fullBooking.setCustomer(customer);
+                }
+                if (fullBooking.getSessionType() == null) {
+                    SessionType st = sessionTypeRepository.findById(fullBooking.getSessionTypeId())
+                            .orElseThrow(() -> new RuntimeException("Session type not found"));
+                    fullBooking.setSessionType(st);
+                }
+                
+                var tenant = tenantService.getTenantById(fullBooking.getTenantId());
+                var businessUser = tenantService.getBusinessEmailForTenant(fullBooking.getTenantId());
+                
+                emailService.sendCustomerBookingConfirmation(fullBooking, tenant);
+                emailService.sendBusinessBookingNotification(fullBooking, tenant, businessUser);
+                
+                log.info("✅ Confirmation emails sent for booking {}", savedBooking.getId());
+            } catch (Exception e) {
+                // Log error but don't fail the booking creation
+                log.error("❌ Failed to send booking confirmation emails for booking {}: {}", 
+                        savedBooking.getId(), e.getMessage(), e);
+            }
+        } else {
+            // If payment is required, emails will be sent after successful payment
+            // via the Stripe webhook handler (see StripeService.handlePaymentSuccess)
+            log.info("Emails will be sent after successful payment for booking {}", savedBooking.getId());
+        }
 
         return savedBooking;
     }
@@ -137,14 +193,18 @@ public class BookingService {
 
         // Send confirmation emails asynchronously
         try {
+            log.info("Sending confirmation emails for booking {} after successful payment", bookingId);
             var tenant = tenantService.getTenantById(fullBooking.getTenantId());
             var businessUser = tenantService.getBusinessEmailForTenant(fullBooking.getTenantId());
 
             emailService.sendCustomerBookingConfirmation(fullBooking, tenant);
             emailService.sendBusinessBookingNotification(fullBooking, tenant, businessUser);
+            
+            log.info("✅ Confirmation emails sent successfully for booking {}", bookingId);
         } catch (Exception e) {
             // Log error but don't fail the booking confirmation
-            System.err.println("Failed to send booking confirmation emails: " + e.getMessage());
+            log.error("❌ Failed to send booking confirmation emails for booking {}: {}", 
+                    bookingId, e.getMessage(), e);
         }
     }
 }

@@ -484,7 +484,16 @@ export default function BusinessDashboard() {
 
           {activeTab === 'bookings' && (
             <>
-              <h3 style={{ marginBottom: '16px' }}>Upcoming Bookings</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0 }}>Upcoming Bookings</h3>
+                <button
+                  onClick={loadData}
+                  className="button button-secondary"
+                  style={{ fontSize: '14px', padding: '8px 16px' }}
+                >
+                  🔄 Refresh
+                </button>
+              </div>
               <table className="table">
                 <thead>
                   <tr>
@@ -506,10 +515,15 @@ export default function BusinessDashboard() {
                           padding: '4px 8px',
                           borderRadius: '4px',
                           fontSize: '12px',
-                          background: booking.status === 'CONFIRMED' ? '#d1fae5' : '#fee2e2',
-                          color: booking.status === 'CONFIRMED' ? '#065f46' : '#991b1b'
+                          fontWeight: '500',
+                          background: booking.status === 'CONFIRMED' ? '#d1fae5' : 
+                                      booking.status === 'PENDING_PAYMENT' ? '#fef3c7' : 
+                                      booking.status === 'PAYMENT_FAILED' ? '#fee2e2' : '#fee2e2',
+                          color: booking.status === 'CONFIRMED' ? '#065f46' : 
+                                 booking.status === 'PENDING_PAYMENT' ? '#92400e' : 
+                                 booking.status === 'PAYMENT_FAILED' ? '#991b1b' : '#991b1b'
                         }}>
-                          {booking.status}
+                          {booking.status === 'PENDING_PAYMENT' ? 'Payment Pending' : booking.status}
                         </span>
                       </td>
                       <td>

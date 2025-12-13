@@ -16,6 +16,8 @@ import com.scheduler.booking.repository.BusinessUserRepository;
 import com.scheduler.booking.repository.TenantRepository;
 import com.scheduler.booking.service.BookingService;
 import com.scheduler.booking.service.SessionTypeService;
+import com.scheduler.booking.service.StripeService;
+import com.scheduler.booking.repository.PaymentRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +42,8 @@ public class BusinessController {
     private final BlockedSlotRepository blockedSlotRepository;
     private final com.scheduler.booking.service.BusinessHoursService businessHoursService;
     private final com.scheduler.booking.service.ImageStorageService imageStorageService;
+    private final StripeService stripeService;
+    private final PaymentRepository paymentRepository;
 
     private UUID getTenantIdFromAuth(Authentication authentication) {
         String clerkUserId = authentication.getName();
@@ -211,19 +215,27 @@ public class BusinessController {
         UUID tenantId = getTenantIdFromAuth(authentication);
         List<Booking> bookings = bookingService.getUpcomingBookings(tenantId);
 
-        // Debug logging to see what's being returned
-        System.out.println("=== BOOKINGS RESPONSE DEBUG ===");
-        System.out.println("Total bookings: " + bookings.size());
+        // Sync payment status from Stripe for pending payments
+        // This ensures payment status is up-to-date even if webhooks are not working
         for (Booking booking : bookings) {
-            System.out.println("Booking ID: " + booking.getId());
-            System.out.println("  Start Time: " + booking.getStartTime());
-            System.out.println("  End Time: " + booking.getEndTime());
-            System.out.println("  Customer: " + (booking.getCustomer() != null ? booking.getCustomer().getFirstName() + " " + booking.getCustomer().getLastName() : "NULL"));
-            System.out.println("  Session Type: " + (booking.getSessionType() != null ? booking.getSessionType().getName() : "NULL"));
-            System.out.println("  Customer loaded: " + (booking.getCustomer() != null));
-            System.out.println("  SessionType loaded: " + (booking.getSessionType() != null));
+            if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+                // Check if payment exists and is still pending
+                paymentRepository.findByBookingId(booking.getId()).ifPresent(payment -> {
+                    if ("PENDING".equals(payment.getStatus()) && payment.getStripeCheckoutSessionId() != null) {
+                        // Sync payment status from Stripe in background
+                        try {
+                            stripeService.syncPaymentStatusFromStripe(booking.getId());
+                        } catch (Exception e) {
+                            // Log but don't fail the request
+                            System.err.println("Failed to sync payment status for booking " + booking.getId() + ": " + e.getMessage());
+                        }
+                    }
+                });
+            }
         }
-        System.out.println("================================");
+
+        // Reload bookings after sync to get updated statuses
+        bookings = bookingService.getUpcomingBookings(tenantId);
 
         return ResponseEntity.ok(bookings);
     }

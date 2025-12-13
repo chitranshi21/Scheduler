@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { useEffect } from 'react';
 import { setupApiAuth } from './services/api';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import BusinessDashboard from './pages/BusinessDashboard';
@@ -43,6 +44,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route
         path="/admin/*"
@@ -61,24 +63,9 @@ function AppRoutes() {
         }
       />
       <Route path="/book/:slug" element={<CustomerPortal />} />
+      <Route path="/book/:slug/:sessionId" element={<CustomerPortal />} />
       <Route path="/booking-success" element={<BookingSuccess />} />
       <Route path="/booking-cancelled" element={<BookingCancelled />} />
-      <Route
-        path="/"
-        element={
-          user ? (
-            userRole === 'ADMIN' ? (
-              <Navigate to="/admin" />
-            ) : userRole === 'BUSINESS' ? (
-              <Navigate to="/business" />
-            ) : (
-              <Navigate to="/login" />
-            )
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
     </Routes>
   );
 }

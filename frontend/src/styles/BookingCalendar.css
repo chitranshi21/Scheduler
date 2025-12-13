@@ -1,20 +1,24 @@
 .booking-calendar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* Use minmax to prevent overflow */
+  gap: 48px;
   background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  max-width: 900px;
+  border-radius: 20px;
+  padding: 48px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-width: 1100px;
   margin: 0 auto;
+  border: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent children from overflowing */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 968px) {
   .booking-calendar {
-    grid-template-columns: 1fr;
-    padding: 20px;
-    gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 32px 24px;
+    gap: 32px;
   }
 }
 
@@ -22,6 +26,8 @@
 .calendar-section {
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Prevent grid overflow */
+  overflow: hidden; /* Contain children */
 }
 
 .calendar-header {
@@ -32,8 +38,8 @@
 }
 
 .calendar-month {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: #1f2937;
   margin: 0;
 }
@@ -58,7 +64,7 @@
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 8px;
 }
 
 .calendar-day-name {
@@ -76,19 +82,22 @@
   align-items: center;
   justify-content: center;
   border: none;
-  background: none;
-  font-size: 14px;
+  background: #f9fafb;
+  font-size: 15px;
   font-weight: 500;
   color: #1f2937;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.2s;
   position: relative;
+  min-height: 44px;
 }
 
 .calendar-day:not(.empty):not(.past):hover {
   background: #eef2ff;
   color: #4f46e5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
 }
 
 .calendar-day.empty {
@@ -121,7 +130,9 @@
 .time-slots-section {
   display: flex;
   flex-direction: column;
-  max-height: 500px;
+  max-height: 600px;
+  min-width: 0; /* Prevent grid overflow */
+  overflow: hidden; /* Contain children */
 }
 
 .selected-date-header {
@@ -131,8 +142,8 @@
 }
 
 .selected-date-header h3 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   color: #1f2937;
   margin: 0 0 8px 0;
 }
@@ -145,11 +156,27 @@
 
 .time-slots-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* Use minmax to prevent overflow */
+  gap: 10px;
   overflow-y: auto;
-  padding-right: 8px;
-  max-height: 400px;
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  padding-right: 12px;
+  max-height: 500px;
+  min-width: 0; /* Prevent grid overflow */
+  width: 100%; /* Ensure it respects parent width */
+  box-sizing: border-box;
+}
+
+@media (max-width: 968px) {
+  .time-slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .time-slots-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .time-slots-grid::-webkit-scrollbar {
@@ -171,16 +198,20 @@
 }
 
 .time-slot {
-  padding: 12px 16px;
+  padding: 14px 12px;
   border: 2px solid #e5e7eb;
   background: white;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
   color: #1f2937;
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
+  min-width: 0; /* Prevent overflow */
+  overflow: hidden; /* Contain content */
+  box-sizing: border-box;
+  word-wrap: break-word;
 }
 
 .time-slot:hover:not(:disabled) {

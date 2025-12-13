@@ -4,15 +4,21 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 export default function BookingSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
   const sessionId = searchParams.get('session_id');
+  const slug = searchParams.get('slug');
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          navigate('/');
+          // Redirect to business booking page if slug is available, otherwise home
+          if (slug) {
+            navigate(`/book/${slug}?payment=success`);
+          } else {
+            navigate('/');
+          }
           return 0;
         }
         return prev - 1;
@@ -20,7 +26,7 @@ export default function BookingSuccess() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, slug]);
 
   return (
     <div style={{
@@ -116,11 +122,17 @@ export default function BookingSuccess() {
         </div>
 
         <button
-          onClick={() => navigate('/')}
+          onClick={() => {
+            if (slug) {
+              navigate(`/book/${slug}?payment=success`);
+            } else {
+              navigate('/');
+            }
+          }}
           className="button button-primary"
           style={{ width: '100%', marginBottom: '12px' }}
         >
-          Back to Home
+          {slug ? 'Back to Booking Page' : 'Back to Home'}
         </button>
 
         <p style={{

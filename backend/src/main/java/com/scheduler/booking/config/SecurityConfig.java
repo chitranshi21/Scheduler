@@ -41,10 +41,13 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/api/auth/**", "/h2-console/**", "/actuator/**",
                                        "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // Customer endpoints are public (for booking pages)
+                        .requestMatchers("/api/customer/**").permitAll()
+                        // Stripe endpoints are public (for payment processing)
+                        .requestMatchers("/api/stripe/**").permitAll()
                         // Role-based access control
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/business/**").hasRole("BUSINESS")
-                        .requestMatchers("/api/customer/**").hasAnyRole("CUSTOMER", "BUSINESS")
                         // All other requests require authentication
                         .anyRequest().authenticated()
                 )

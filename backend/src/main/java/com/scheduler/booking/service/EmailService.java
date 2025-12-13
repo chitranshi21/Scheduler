@@ -36,7 +36,8 @@ public class EmailService {
     @Async
     public void sendCustomerBookingConfirmation(Booking booking, Tenant tenant) {
         if (!mailgunConfig.isEnabled()) {
-            log.info("Email sending is disabled. Skipping customer booking confirmation.");
+            log.warn("⚠️ Email sending is DISABLED (mailgun.enabled=false). Skipping customer booking confirmation for booking {}. " +
+                    "To enable emails, set MAILGUN_ENABLED=true and configure Mailgun credentials.", booking.getId());
             return;
         }
 
@@ -102,7 +103,8 @@ public class EmailService {
     @Async
     public void sendBusinessBookingNotification(Booking booking, Tenant tenant, String businessEmail) {
         if (!mailgunConfig.isEnabled()) {
-            log.info("Email sending is disabled. Skipping business booking notification.");
+            log.warn("⚠️ Email sending is DISABLED (mailgun.enabled=false). Skipping business booking notification for booking {}. " +
+                    "To enable emails, set MAILGUN_ENABLED=true and configure Mailgun credentials.", booking.getId());
             return;
         }
 

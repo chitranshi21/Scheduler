@@ -4,9 +4,11 @@ import com.scheduler.booking.config.StripeConfig;
 import com.scheduler.booking.model.Booking;
 import com.scheduler.booking.model.Payment;
 import com.scheduler.booking.model.SessionType;
+import com.scheduler.booking.model.Tenant;
 import com.scheduler.booking.repository.BookingRepository;
 import com.scheduler.booking.repository.PaymentRepository;
 import com.scheduler.booking.repository.SessionTypeRepository;
+import com.scheduler.booking.repository.TenantRepository;
 import com.scheduler.booking.service.StripeService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -36,6 +38,7 @@ public class StripeController {
     private final BookingRepository bookingRepository;
     private final SessionTypeRepository sessionTypeRepository;
     private final PaymentRepository paymentRepository;
+    private final TenantRepository tenantRepository;
 
     /**
      * Create Stripe Checkout Session for a booking
@@ -44,6 +47,7 @@ public class StripeController {
     public ResponseEntity<Map<String, String>> createCheckoutSession(@RequestBody Map<String, String> request) {
         try {
             String bookingId = request.get("bookingId");
+            String tenantSlug = request.get("slug"); // Get slug from request
 
             Booking booking = bookingRepository.findById(UUID.fromString(bookingId))
                     .orElseThrow(() -> new RuntimeException("Booking not found"));
@@ -51,11 +55,22 @@ public class StripeController {
             SessionType sessionType = sessionTypeRepository.findById(booking.getSessionTypeId())
                     .orElseThrow(() -> new RuntimeException("Session type not found"));
 
+            // If slug not provided, try to get it from tenant
+            String slug = tenantSlug;
+            if (slug == null || slug.isEmpty()) {
+                Tenant tenant = tenantRepository.findById(booking.getTenantId())
+                        .orElse(null);
+                if (tenant != null) {
+                    slug = tenant.getSlug();
+                }
+            }
+
             // Create Stripe Checkout Session
             Session session = stripeService.createCheckoutSession(
                     booking,
                     sessionType,
-                    booking.getCustomer().getEmail()
+                    booking.getCustomer().getEmail(),
+                    slug
             );
 
             // Create payment record
@@ -162,5 +177,28 @@ public class StripeController {
         Payment payment = paymentRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
         return ResponseEntity.ok(payment);
+    }
+
+    /**
+     * Sync payment status from Stripe for a booking
+     * Useful when webhooks are not configured or not working
+     */
+    @PostMapping("/sync-payment-status/{bookingId}")
+    public ResponseEntity<Map<String, String>> syncPaymentStatus(@PathVariable UUID bookingId) {
+        try {
+            stripeService.syncPaymentStatusFromStripe(bookingId);
+            Payment payment = paymentRepository.findByBookingId(bookingId)
+                    .orElseThrow(() -> new RuntimeException("Payment not found"));
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("status", payment.getStatus());
+            response.put("message", "Payment status synced successfully");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error syncing payment status", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

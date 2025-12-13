@@ -2,25 +2,37 @@ import { SignIn, SignUp, useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
+// Helper function to get redirect URL based on role
+const getRedirectUrl = (role: string): string => {
+  if (role === 'ADMIN') {
+    return '/admin';
+  } else if (role === 'BUSINESS') {
+    return '/business';
+  }
+  return '/'; // CUSTOMER or no role
+};
+
 export default function Login() {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn, user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [showSignUp, setShowSignUp] = useState(false);
 
   useEffect(() => {
+    // Wait for Clerk to fully load before checking authentication
+    if (!isLoaded) return;
+
     if (isSignedIn && user) {
       const userRole = user.publicMetadata?.role as string || 'CUSTOMER';
+      const redirectUrl = getRedirectUrl(userRole);
+      
+      // Small delay to ensure Clerk state is fully updated
+      const timer = setTimeout(() => {
+        navigate(redirectUrl, { replace: true });
+      }, 100);
 
-      // Navigate based on user role
-      if (userRole === 'ADMIN') {
-        navigate('/admin');
-      } else if (userRole === 'BUSINESS') {
-        navigate('/business');
-      } else {
-        navigate('/');
-      }
+      return () => clearTimeout(timer);
     }
-  }, [isSignedIn, user, navigate]);
+  }, [isSignedIn, user, isLoaded, navigate]);
 
   return (
     <div style={{
@@ -56,11 +68,11 @@ export default function Login() {
         }}>
           {showSignUp ? (
             <SignUp
-              afterSignUpUrl="/"
+              routing="hash"
             />
           ) : (
             <SignIn
-              afterSignInUrl="/"
+              routing="hash"
             />
           )}
         </div>
