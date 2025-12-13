@@ -63,6 +63,15 @@ export const businessAPI = {
   getTenant: () => api.get<Tenant>('/business/tenant'),
   updateTenantTimezone: (timezone: string) =>
     api.put<Tenant>('/business/tenant/timezone', { timezone }),
+  updateTenantProfile: (data: { logoUrl?: string; description?: string }) =>
+    api.put<Tenant>('/business/tenant/profile', data),
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ logoUrl: string }>('/business/tenant/upload-logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   getSessionTypes: () => api.get<SessionType[]>('/business/sessions'),
   createSessionType: (data: Partial<SessionType>) =>
     api.post<SessionType>('/business/sessions', data),

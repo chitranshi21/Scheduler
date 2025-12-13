@@ -4,6 +4,7 @@ import { businessAPI } from '../services/api';
 import type { SessionType, Booking, Tenant, BusinessHours } from '../types';
 import WeeklySchedule from '../components/WeeklySchedule';
 import BusinessCalendar from '../components/BusinessCalendar';
+import ImageUpload from '../components/ImageUpload';
 import { getUserTimezone, getTimezoneAbbreviation } from '../utils/timezone';
 
 export default function BusinessDashboard() {
@@ -18,6 +19,11 @@ export default function BusinessDashboard() {
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState({
+    logoUrl: '',
+    description: ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -60,6 +66,12 @@ export default function BusinessDashboard() {
       setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
       setBlockedSlots(Array.isArray(blockedSlotsRes.data) ? blockedSlotsRes.data : []);
       setBusinessHours(Array.isArray(businessHoursRes.data) ? businessHoursRes.data : []);
+
+      // Initialize profile data with tenant info
+      setProfileData({
+        logoUrl: tenantData.logoUrl || '',
+        description: tenantData.description || ''
+      });
 
       // Auto-detect and update timezone if it's still UTC (default)
       if (tenantData.timezone === 'UTC') {
@@ -220,6 +232,45 @@ export default function BusinessDashboard() {
     }
   };
 
+  const handleLogoUpload = async (file: File): Promise<string> => {
+    try {
+      console.log('Uploading logo:', file.name);
+      const response = await businessAPI.uploadLogo(file);
+      const logoUrl = response.data.logoUrl;
+
+      // Update local state
+      setProfileData({ ...profileData, logoUrl });
+
+      // Reload tenant data to get the updated logo
+      const tenantRes = await businessAPI.getTenant();
+      setTenant(tenantRes.data);
+
+      alert('Logo uploaded successfully!');
+      return logoUrl;
+    } catch (error: any) {
+      console.error('Failed to upload logo:', error);
+      throw error;
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      // Only save description (logo is handled separately via upload)
+      const response = await businessAPI.updateTenantProfile({
+        description: profileData.description
+      });
+      setTenant(response.data);
+      alert('Profile updated successfully!');
+    } catch (error: any) {
+      console.error('Failed to save profile:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save profile';
+      alert('Error: ' + errorMessage);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   return (
     <div>
       <div className="navbar">
@@ -278,6 +329,43 @@ export default function BusinessDashboard() {
             }}>
               http://localhost:5173/book/{tenant.slug}
             </div>
+          </div>
+        )}
+
+        {!loading && !error && tenant && (
+          <div className="card">
+            <h3 style={{ marginBottom: '16px' }}>Business Profile</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Customize your public booking page with a logo and description to make it more personal and professional.
+            </p>
+
+            <ImageUpload
+              currentImageUrl={profileData.logoUrl}
+              onUpload={handleLogoUpload}
+            />
+
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-input"
+                value={profileData.description}
+                onChange={(e) => setProfileData({ ...profileData, description: e.target.value })}
+                rows={4}
+                placeholder="Describe your business, services, or what customers can expect..."
+                maxLength={2000}
+              />
+              <small style={{ color: '#6b7280', fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                {profileData.description.length}/2000 characters
+              </small>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              className="button button-primary"
+              disabled={isSavingProfile}
+            >
+              {isSavingProfile ? 'Saving...' : 'Save Description'}
+            </button>
           </div>
         )}
 

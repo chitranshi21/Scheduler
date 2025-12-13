@@ -97,13 +97,67 @@ export default function CustomerPortal() {
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
       <div style={{
-        background: 'white',
-        padding: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '48px 24px',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
       }}>
         <div className="container">
-          <h1>{tenant?.name}</h1>
-          <p style={{ color: '#6b7280', marginTop: '8px' }}>{tenant?.description}</p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: '24px'
+          }}>
+            {tenant?.logoUrl && (
+              <div style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: 'white',
+                padding: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}>
+                <img
+                  src={tenant.logoUrl}
+                  alt={`${tenant.name} logo`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '50%'
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            <div>
+              <h1 style={{
+                color: 'white',
+                fontSize: '36px',
+                fontWeight: '700',
+                margin: '0 0 16px 0',
+                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}>
+                {tenant?.name}
+              </h1>
+              {tenant?.description && (
+                <p style={{
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  fontSize: '18px',
+                  lineHeight: '1.6',
+                  maxWidth: '700px',
+                  margin: '0 auto',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                }}>
+                  {tenant.description}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

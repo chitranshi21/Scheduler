@@ -5,6 +5,7 @@ import com.scheduler.booking.dto.BookingRequest;
 import com.scheduler.booking.dto.BusinessHoursRequest;
 import com.scheduler.booking.dto.BusinessHoursResponse;
 import com.scheduler.booking.dto.SessionTypeRequest;
+import com.scheduler.booking.dto.TenantProfileRequest;
 import com.scheduler.booking.model.BlockedSlot;
 import com.scheduler.booking.model.Booking;
 import com.scheduler.booking.model.BusinessUser;
@@ -38,6 +39,7 @@ public class BusinessController {
     private final TenantRepository tenantRepository;
     private final BlockedSlotRepository blockedSlotRepository;
     private final com.scheduler.booking.service.BusinessHoursService businessHoursService;
+    private final com.scheduler.booking.service.ImageStorageService imageStorageService;
 
     private UUID getTenantIdFromAuth(Authentication authentication) {
         String clerkUserId = authentication.getName();
@@ -105,6 +107,71 @@ public class BusinessController {
         }
 
         return ResponseEntity.ok(tenant);
+    }
+
+    @PutMapping("/tenant/profile")
+    public ResponseEntity<Tenant> updateTenantProfile(
+            Authentication authentication,
+            @Valid @RequestBody TenantProfileRequest request) {
+        UUID tenantId = getTenantIdFromAuth(authentication);
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+
+        // Update logo URL if provided
+        if (request.getLogoUrl() != null) {
+            tenant.setLogoUrl(request.getLogoUrl());
+        }
+
+        // Update description if provided
+        if (request.getDescription() != null) {
+            tenant.setDescription(request.getDescription());
+        }
+
+        tenant = tenantRepository.save(tenant);
+        return ResponseEntity.ok(tenant);
+    }
+
+    @PostMapping("/tenant/upload-logo")
+    public ResponseEntity<java.util.Map<String, String>> uploadLogo(
+            Authentication authentication,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            UUID tenantId = getTenantIdFromAuth(authentication);
+            Tenant tenant = tenantRepository.findById(tenantId)
+                    .orElseThrow(() -> new RuntimeException("Tenant not found"));
+
+            System.out.println("=== LOGO UPLOAD DEBUG ===");
+            System.out.println("Tenant ID: " + tenantId);
+            System.out.println("File name: " + file.getOriginalFilename());
+            System.out.println("File size: " + file.getSize());
+            System.out.println("Content type: " + file.getContentType());
+
+            // Delete old logo if exists
+            if (tenant.getLogoUrl() != null && !tenant.getLogoUrl().isEmpty()) {
+                System.out.println("Deleting old logo: " + tenant.getLogoUrl());
+                imageStorageService.deleteImage(tenant.getLogoUrl());
+            }
+
+            // Upload new logo
+            String logoUrl = imageStorageService.uploadImage(file, tenantId);
+            System.out.println("New logo URL: " + logoUrl);
+
+            // Update tenant with new logo URL
+            tenant.setLogoUrl(logoUrl);
+            tenant = tenantRepository.save(tenant);
+
+            System.out.println("✅ Logo uploaded and tenant updated successfully");
+
+            return ResponseEntity.ok(java.util.Map.of("logoUrl", logoUrl));
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("❌ Validation error: " + e.getMessage());
+            throw new RuntimeException("Invalid file: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("❌ Upload error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to upload logo: " + e.getMessage());
+        }
     }
 
     @GetMapping("/sessions")
