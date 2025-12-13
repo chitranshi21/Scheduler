@@ -271,6 +271,16 @@ export default function BusinessDashboard() {
     }
   };
 
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`✓ ${label} copied to clipboard!`);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      alert('Failed to copy to clipboard');
+    }
+  };
+
   return (
     <div>
       <div className="navbar">
@@ -322,12 +332,37 @@ export default function BusinessDashboard() {
             <h3>Your Booking Link</h3>
             <div style={{
               marginTop: '12px',
-              padding: '12px',
-              background: '#f3f4f6',
-              borderRadius: '4px',
-              fontFamily: 'monospace'
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center'
             }}>
-              http://localhost:5173/book/{tenant.slug}
+              <div style={{
+                flex: 1,
+                padding: '12px',
+                background: '#f3f4f6',
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+                fontSize: '14px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                http://localhost:5173/book/{tenant.slug}
+              </div>
+              <button
+                onClick={() => copyToClipboard(`http://localhost:5173/book/${tenant.slug}`, 'Booking link')}
+                className="button button-secondary"
+                style={{
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                📋 Copy
+              </button>
             </div>
           </div>
         )}
@@ -427,7 +462,7 @@ export default function BusinessDashboard() {
                 </button>
               </div>
               <div className="grid">
-                {sessions.map((session) => (
+                {tenant && sessions.map((session) => (
                   <div key={session.id} className="card" style={{ margin: 0 }}>
                     <h4>{session.name}</h4>
                     <p style={{ color: '#6b7280', fontSize: '14px', margin: '8px 0' }}>
@@ -445,10 +480,67 @@ export default function BusinessDashboard() {
                         </div>
                       )}
                     </div>
+                    <div style={{
+                      marginTop: '16px',
+                      padding: '12px',
+                      background: '#f9fafb',
+                      borderRadius: '6px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginBottom: '8px',
+                        fontWeight: '500'
+                      }}>
+                        Direct Booking Link:
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{
+                          flex: 1,
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          color: '#4b5563',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          http://localhost:5173/book/{tenant.slug}/{session.id}
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(
+                            `http://localhost:5173/book/${tenant.slug}/${session.id}`,
+                            `Link for "${session.name}"`
+                          )}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            padding: '4px 8px',
+                            color: '#6b7280',
+                            transition: 'color 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#4f46e5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#6b7280';
+                          }}
+                          title="Copy session link"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </div>
                     <button
                       onClick={() => handleDeleteSession(session.id)}
                       className="button button-danger"
-                      style={{ marginTop: '12px', fontSize: '12px', padding: '6px 12px' }}
+                      style={{ marginTop: '12px', fontSize: '12px', padding: '6px 12px', width: '100%' }}
                     >
                       Delete
                     </button>
